@@ -22,3 +22,6 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+/.bootstrap
+/storage/app/private/*.json
+/storage/app/private/demo-access.md
