@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function active() {
+      return request.auth != null
+        && request.auth.token.access_until > request.time.toMillis() / 1000;
+    }
+    match /tickets/{ticketId} {
+      allow get: if active() && request.auth.token.ticket_id == ticketId;
+      allow list, write: if false;
+    }
+    match /counters/{counterId} {
+      allow get: if active() && request.auth.token.counter_id == counterId;
+      allow list, write: if false;
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}
