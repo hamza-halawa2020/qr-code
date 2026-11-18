@@ -61,7 +61,7 @@ php artisan serve --host=127.0.0.1 --port=8000
 على هذا الجهاز يوجد إعداد تصحيح Herd يوقف بعض الطلبات قبل عرضها. لعزله في عملية الخادم فقط، شغّل بدل أمر `artisan serve`:
 
 ```powershell
-php -d auto_prepend_file= -S 127.0.0.1:8000 -t public scripts/local-router.php
+php -d auto_prepend_file= artisan serve --host=127.0.0.1 --port=8000
 ```
 
 
