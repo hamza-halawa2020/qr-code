@@ -2,102 +2,97 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\TicketStatus;
-use App\Models\{Branch, Counter, Ticket};
-use App\Services\{FirebaseGateway, QueueService, QueueSnapshot};
+use App\Models\Branch;
+use App\Models\Counter;
+use App\Services\BranchQrCodeService;
+use App\Services\CounterDisplayService;
+use App\Services\CustomerQueueService;
+use App\Services\TicketNotificationService;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
+use Illuminate\Http\Response;
 
 class QueueController extends Controller
 {
-    public function home()
+    public function __construct(
+        private readonly CustomerQueueService $customers,
+        private readonly CounterDisplayService $displays,
+        private readonly TicketNotificationService $notifications,
+        private readonly BranchQrCodeService $qrCodes,
+    ) {}
+
+    public function home(): View
     {
-        return view('queue.home', ['branches' => Branch::orderBy('name')->get()]);
+        return view('queue.home', ['branches' => $this->customers->branches()]);
     }
 
-    public function branch(Request $request, Branch $branch)
+    public function qr(Request $request, Branch $branch): Response
     {
-        $secret = $request->session()->get('ticket.'.$branch->id);
-        $active = $secret ? Ticket::where('token_hash', hash('sha256', $secret))->first() : null;
-        return view('queue.branch', compact('branch', 'active', 'secret'));
+        return response($this->qrCodes->generate($branch, $request->user()))
+            ->header('Content-Type', 'image/svg+xml')
+            ->header('Content-Disposition', 'attachment; filename="branch-'.$branch->id.'-qr.svg"');
     }
 
-    public function book(Request $request, Branch $branch, QueueService $queue)
+    public function branch(Request $request, Branch $branch): View
     {
-        $secret = $request->session()->get('ticket.'.$branch->id);
-        $existing = $secret ? Ticket::where('token_hash', hash('sha256', $secret))->first() : null;
-        if ($existing?->status->isActive()) { return redirect()->route('ticket.show', $secret); }
-        // Keep the pending key in session across request retries.
-        $secret = $request->session()->get('pending.'.$branch->id) ?? Str::random(64);
-        $request->session()->put('pending.'.$branch->id, $secret);
-        $queue->book($branch, $secret, $secret);
-        $request->session()->put('ticket.'.$branch->id, $secret);
-        $request->session()->forget('pending.'.$branch->id);
+        return view('queue.branch', $this->customers->branchData($branch, $request->session()));
+    }
+
+    public function book(Request $request, Branch $branch): RedirectResponse
+    {
+        return redirect()->route('ticket.show', $this->customers->book($branch, $request->session(), $request->only(['service_id', 'customer_phone'])));
+    }
+
+    public function show(string $secret): View
+    {
+        return view('queue.ticket', $this->customers->ticketData($secret));
+    }
+
+    public function state(string $secret): JsonResponse
+    {
+        return response()->json($this->customers->state($secret))->header('Cache-Control', 'no-store');
+    }
+
+    public function cancel(string $secret): RedirectResponse
+    {
+        $this->customers->cancel($secret);
+
         return redirect()->route('ticket.show', $secret);
     }
 
-    public function show(string $secret, QueueSnapshot $snapshot)
+    public function firebaseTicket(string $secret): JsonResponse
     {
-        $ticket = $this->ticket($secret);
-        return view('queue.ticket', ['ticket' => $ticket, 'secret' => $secret, 'snapshot' => $snapshot->ticket($ticket)]);
+        return response()->json($this->notifications->firebaseCredentials($secret))->header('Cache-Control', 'no-store');
     }
 
-    public function state(string $secret, QueueSnapshot $snapshot)
+    public function subscribe(Request $request, string $secret): JsonResponse
     {
-        return response()->json($snapshot->ticket($this->ticket($secret)))->header('Cache-Control', 'no-store');
-    }
+        $this->notifications->subscribe($secret, $request->input('token'));
 
-    public function cancel(string $secret, QueueService $queue)
-    {
-        $queue->transition($this->ticket($secret), 'cancel');
-        return redirect()->route('ticket.show', $secret);
-    }
-
-    public function firebaseTicket(string $secret, FirebaseGateway $firebase)
-    {
-        abort_unless(config('firebase.enabled'), 503);
-        $ticket = $this->ticket($secret);
-        return response()->json(['token' => $firebase->customToken('ticket-'.$ticket->public_id, ['ticket_id' => $ticket->public_id]), 'path' => 'tickets/'.$ticket->public_id])->header('Cache-Control', 'no-store');
-    }
-
-    public function subscribe(Request $request, string $secret)
-    {
-        abort_unless(config('firebase.enabled'), 503);
-        $ticket = $this->ticket($secret);
-        abort_unless($ticket->status->isActive(), 422);
-        $data = $request->validate(['token' => ['required', 'string', 'max:4096']]);
-        DB::table('push_subscriptions')->updateOrInsert(['token_hash' => hash('sha256', $data['token'])], ['ticket_id' => $ticket->id, 'token' => $data['token'], 'created_at' => now(), 'updated_at' => now()]);
         return response()->json(['ok' => true]);
     }
 
-    public function display(Counter $counter, string $secret, QueueSnapshot $snapshot)
+    public function display(Counter $counter, string $secret): View
     {
-        $this->authorizeDisplay($counter, $secret);
-        return view('queue.display', ['counter' => $counter, 'secret' => $secret, 'snapshot' => $snapshot->counter($counter)]);
+        return view('queue.display', $this->displays->viewData($counter, $secret));
     }
 
-    public function displayState(Counter $counter, string $secret, QueueSnapshot $snapshot)
+    public function unsubscribe(Request $request, string $secret): JsonResponse
     {
-        $this->authorizeDisplay($counter, $secret);
-        return response()->json($snapshot->counter($counter))->header('Cache-Control', 'no-store');
+        $this->notifications->unsubscribe($secret, $request->input('token'));
+
+        return response()->json(['ok' => true]);
     }
 
-    public function firebaseDisplay(Counter $counter, string $secret, FirebaseGateway $firebase)
+    public function displayState(Counter $counter, string $secret): JsonResponse
     {
-        $this->authorizeDisplay($counter, $secret);
-        abort_unless(config('firebase.enabled'), 503);
-        return response()->json(['token' => $firebase->customToken('counter-'.$counter->id, ['counter_id' => (string) $counter->id]), 'path' => 'counters/'.$counter->id])->header('Cache-Control', 'no-store');
+        return response()->json($this->displays->state($counter, $secret))->header('Cache-Control', 'no-store');
     }
 
-    private function ticket(string $secret): Ticket
+    public function firebaseDisplay(Counter $counter, string $secret): JsonResponse
     {
-        abort_unless(strlen($secret) === 64, 404);
-        return Ticket::where('token_hash', hash('sha256', $secret))->firstOrFail();
-    }
-
-    private function authorizeDisplay(Counter $counter, string $secret): void
-    {
-        abort_unless(hash_equals($counter->display_token_hash, hash('sha256', $secret)), 404);
+        return response()->json($this->displays->firebaseCredentials($counter, $secret))->header('Cache-Control', 'no-store');
     }
 }

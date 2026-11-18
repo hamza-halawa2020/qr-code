@@ -13,6 +13,10 @@ service cloud.firestore {
       allow get: if active() && request.auth.token.counter_id == counterId;
       allow list, write: if false;
     }
+    match /branch_displays/{branchId} {
+      allow get: if active() && request.auth.token.branch_display_id == branchId;
+      allow list, write: if false;
+    }
     match /{document=**} { allow read, write: if false; }
   }
 }

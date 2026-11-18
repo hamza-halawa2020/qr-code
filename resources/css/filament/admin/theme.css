@@ -1,0 +1,5 @@
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+@source '../../../../app/Filament/**/*.php';
+@source '../../../views/filament/**/*.blade.php';
+
+.queue-grid{display:grid;gap:24px}.queue-card{border:1px solid #dbe3da;border-radius:18px;padding:24px;background:var(--color-white);color:#153e35}.queue-row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}.queue-input{padding:10px 14px;border:1px solid #cbd5cb;border-radius:10px;background:white;color:#153e35;min-height:44px}.queue-number{font-size:96px;font-weight:800;line-height:1.4}.queue-table{width:100%;border-collapse:collapse}.queue-table td,.queue-table th{text-align:right;padding:12px;border-bottom:1px solid #ddd}.queue-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.queue-stats strong{font-size:36px;display:block}.queue-muted{color:#738275;font-size:13px}.queue-link{color:#047857;text-decoration:underline;overflow-wrap:anywhere}.queue-title{font-size:20px;font-weight:700;margin-bottom:16px}@media(max-width:700px){.queue-stats{grid-template-columns:1fr}.queue-table{font-size:12px}}

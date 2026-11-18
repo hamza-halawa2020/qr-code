@@ -8,14 +8,27 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Branch extends Model
 {
     protected $guarded = [];
+    protected $hidden = ['board_token_hash'];
 
     protected function casts(): array
     {
-        return ['is_open' => 'boolean'];
+        return ['is_open' => 'boolean', 'automatic_queue' => 'boolean'];
     }
 
-    public function counters(): HasMany { return $this->hasMany(Counter::class); }
-    public function tickets(): HasMany { return $this->hasMany(Ticket::class); }
+    public function counters(): HasMany
+    {
+        return $this->hasMany(Counter::class);
+    }
+
+    public function services(): HasMany
+    {
+        return $this->hasMany(BranchService::class);
+    }
+
+    public function tickets(): HasMany
+    {
+        return $this->hasMany(Ticket::class);
+    }
 
     public function acceptsBookings(): bool
     {

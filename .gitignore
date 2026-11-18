@@ -22,6 +22,10 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
-/.bootstrap
 /storage/app/private/*.json
 /storage/app/private/demo-access.md
+/public/firebase-messaging-sw.js
+/public/js/filament
+/public/css/filament
+/public/fonts/filament
+/test-results

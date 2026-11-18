@@ -11,7 +11,6 @@ return new class extends Migration
         Schema::create('branches', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('slug')->unique();
             $table->string('timezone')->default('Africa/Cairo');
             $table->boolean('is_open')->default(true);
             $table->string('opens_at', 5)->default('09:00');
