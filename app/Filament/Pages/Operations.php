@@ -74,7 +74,7 @@ class Operations extends Page
 
     public int $noShowSeconds = 60;
 
-    public bool $automaticQueue = false;
+    public int $automaticQueue = 0;
 
     public int $missedTurnRetries = 0;
 
@@ -102,7 +102,7 @@ class Operations extends Page
             $this->opensAt = $branch->opens_at;
             $this->closesAt = $branch->closes_at;
             $this->noShowSeconds = $branch->no_show_after_seconds;
-            $this->automaticQueue = $branch->automatic_queue;
+            $this->automaticQueue = (int) $branch->automatic_queue;
             $this->missedTurnRetries = $branch->missed_turn_retries;
         }
         $this->displayUrl = null;
