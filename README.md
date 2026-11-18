@@ -23,7 +23,7 @@ npm.cmd run build
 php -d auto_prepend_file= -S 127.0.0.1:8000 -t public scripts/local-router.php
 ```
 
-لتشغيل الخادم والعامل والجدولة محليًا في الخلفية: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/start-dev.ps1`. ولإيقاف العمليات التي بدأها السكربت: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/stop-dev.ps1`.
+شغّل العامل والجدولة في نافذتين منفصلتين: `php artisan queue:work` و`php artisan schedule:work`.
 
 افتح العملاء على `http://127.0.0.1:8000` والإدارة على `http://127.0.0.1:8000/admin`.
 

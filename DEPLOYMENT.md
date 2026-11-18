@@ -62,7 +62,7 @@ stopwaitsecs=180
 * * * * * cd /var/www/queue/current && /usr/bin/php8.4 artisan schedule:run >> storage/logs/scheduler.log 2>&1
 ```
 
-على Windows المحلي استخدم [start-dev.ps1](scripts/start-dev.ps1) و[stop-dev.ps1](scripts/stop-dev.ps1). هذه أدوات تطوير ولا تضبط خدمة إنتاج أو تشغيلًا عند إقلاع الجهاز.
+على Windows المحلي شغّل `php artisan queue:work` و`php artisan schedule:work` في نافذتين منفصلتين. هذه أوامر تطوير ولا تضبط خدمة إنتاج عند إقلاع الجهاز.
 
 ## فحص قبل إتاحة العملاء
 

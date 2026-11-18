@@ -37,19 +37,14 @@
 
 ## التشغيل على هذا الجهاز
 
-تشغيل الخادم والعامل والجدولة في الخلفية على Windows:
+شغّل العامل والجدولة في نافذتين منفصلتين على Windows:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/start-dev.ps1
+php -d auto_prepend_file= artisan queue:work --sleep=3 --tries=5 --timeout=120
+php -d auto_prepend_file= artisan schedule:work
 ```
 
-لإيقاف العمليات التي بدأها السكربت فقط:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/stop-dev.ps1
-```
-
-يمكن تمرير `-PhpPath` و`-Port` عند الحاجة. إذا كان المنفذ مشغولًا، يترك السكربت خادمه الحالي كما هو. يحتفظ بمعرفات عملياته وسجلاتها داخل `storage/app/private`، ولا يضيف تشغيلًا تلقائيًا عند بدء Windows. أعد تشغيل العمليات بعد تغيير إعدادات Firebase. هذه أوامر تطوير محلي؛ تجهيز الإنتاج في [DEPLOYMENT.md](DEPLOYMENT.md).
+أوقف الأوامر اليدوية باستخدام Ctrl+C، وأعد تشغيلها بعد تغيير إعدادات Firebase. هذه أوامر تطوير محلي؛ تجهيز الإنتاج في [DEPLOYMENT.md](DEPLOYMENT.md).
 
 في PowerShell أو Terminal يستطيع الوصول إلى أدوات Herd:
 
@@ -151,11 +146,10 @@ DB_PASSWORD=your-password
 
 ```powershell
 php -d auto_prepend_file= artisan test
-php -d auto_prepend_file= scripts/test-concurrency.php
 npm.cmd run build
 ```
 
-اختبار التزامن يحتاج `APP_ENV=local` وMySQL ويستخدم فرعًا مؤقتًا ينظفه بعد الانتهاء. نتائج فحص Chrome السابقة موثقة في قائمة المهام؛ حُذفت سكربتاته وملفاته المؤقتة بعد التحقق.
+نتائج فحوص التزامن وChrome السابقة موثقة في قائمة المهام؛ حُذفت أدوات الفحص الإضافية وملفاتها المؤقتة بعد التحقق. اختبارات التطبيق موجودة داخل `tests` وتعمل باستخدام الأمر أعلاه.
 
 ## أوامر التشغيل والمراقبة
 
@@ -174,12 +168,11 @@ php artisan queue:retry all
 
 ```powershell
 php artisan queue:backup
-php -d auto_prepend_file= scripts/verify-backup.php
 ```
 
 النسخ موجودة في `storage/app/private/backups` ولا تخدمها الواجهة. MySQL يحتاج `MYSQLDUMP_BINARY`؛ تم ضبط مساره محليًا. بيانات اتصال mysqldump تمر عبر ملف خاص مؤقت يُحذف بعد العملية، ولا تظهر في وسيطات العملية. SQLite يستخدم VACUUM INTO لنسخة متسقة.
 
-`verify-backup.php` يعمل محليًا على MySQL فقط، وينشئ نسخة ويستعيدها في قاعدة مؤقتة مستقلة ثم يحذف قاعدة الفحص. تبقى نسخة SQL الخاصة محفوظة. لا يستعيد فوق قاعدة المشروع. اختبار الاستعادة نجح فعليًا.
+نجح اختبار الاستعادة السابق إلى قاعدة مؤقتة مستقلة. حُذفت أداة الفحص الإضافية؛ لإنجاز فحص جديد، استعد النسخة إلى قاعدة اختبار منفصلة وفق دليل النشر. أمر إنشاء النسخ الاحتياطية أعلاه يظل متاحًا.
 
 لتشغيل نسخة يومية الساعة 02:00 بتوقيت القاهرة، اضبط `QUEUE_BACKUPS_ENABLED=true` وشغّل Scheduler. الافتراضي تعطيل الجدولة للنسخ حتى تحدد مكان التخزين وسياسة الاحتفاظ بملفات النسخ. ملفات النسخ قد تحتوي تجزئات كلمات المرور واشتراكات أجهزة؛ احفظها خارج public وGit وقيّد الوصول إليها.
 
