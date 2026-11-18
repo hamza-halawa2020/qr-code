@@ -13,9 +13,11 @@ use Livewire\Attributes\Locked;
 
 class Operations extends Page
 {
-    protected static ?string $navigationLabel = 'إعدادات التشغيل';
+    protected static ?string $navigationLabel = null;
+    protected static ?string $title = null;
 
-    protected static ?string $title = 'الفروع والموظفون والشبابيك';
+    public static function getNavigationLabel(): string { return __('queue.nav_operations'); }
+    public function getTitle(): string { return __('queue.nav_operations'); }
 
     protected static ?int $navigationSort = 2;
 
@@ -74,9 +76,13 @@ class Operations extends Page
 
     public int $noShowSeconds = 60;
 
-    public int $automaticQueue = 0;
+    public bool|int $automaticQueue = 0;
 
     public int $missedTurnRetries = 0;
+
+    public string $displayLocale = 'ar';
+
+    public string $panelLocale = 'ar';
 
     #[Locked]
     public ?string $displayUrl = null;
@@ -104,6 +110,8 @@ class Operations extends Page
             $this->noShowSeconds = $branch->no_show_after_seconds;
             $this->automaticQueue = (int) $branch->automatic_queue;
             $this->missedTurnRetries = $branch->missed_turn_retries;
+            $this->displayLocale = $branch->display_locale ?? 'ar';
+            $this->panelLocale = $branch->panel_locale ?? 'ar';
         }
         $this->displayUrl = null;
         $this->boardUrl = null;
@@ -130,8 +138,8 @@ class Operations extends Page
 
     public function saveAutomation(): void
     {
-        $this->service()->saveAutomation(auth()->user(), $this->selectedBranch, $this->only(['automaticQueue', 'noShowSeconds', 'missedTurnRetries']));
-        $this->resetValidation(['automaticQueue', 'noShowSeconds', 'missedTurnRetries']);
+        $this->service()->saveAutomation(auth()->user(), $this->selectedBranch, $this->only(['automaticQueue', 'noShowSeconds', 'missedTurnRetries', 'displayLocale', 'panelLocale']));
+        $this->resetValidation(['automaticQueue', 'noShowSeconds', 'missedTurnRetries', 'displayLocale', 'panelLocale']);
         $this->done();
     }
 
@@ -266,7 +274,7 @@ class Operations extends Page
 
     private function done(): void
     {
-        Notification::make()->title('تم الحفظ')->success()->send();
+        Notification::make()->title(__('queue.saved'))->success()->send();
     }
 
     protected function getViewData(): array

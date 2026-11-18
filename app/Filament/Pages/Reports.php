@@ -12,9 +12,11 @@ class Reports extends Page
 {
     use WithPagination;
 
-    protected static ?string $navigationLabel = 'التقارير';
+    protected static ?string $navigationLabel = null;
+    protected static ?string $title = null;
 
-    protected static ?string $title = 'تقارير الانتظار والخدمة';
+    public static function getNavigationLabel(): string { return __('queue.nav_reports'); }
+    public function getTitle(): string { return __('queue.nav_reports'); }
 
     protected static ?int $navigationSort = 3;
 

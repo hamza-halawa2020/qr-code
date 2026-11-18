@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [QueueController::class, 'home'])->name('home');
 Route::get('/branches/{branch}/appointments', [ExperienceController::class, 'appointments'])->name('appointments.index');
 Route::post('/branches/{branch}/appointments', [ExperienceController::class, 'bookAppointment'])->block(10, 10)->middleware('throttle:appointment-booking')->name('appointments.book');
-Route::middleware('throttle:queue-state')->group(function () {
+Route::middleware(['throttle:queue-state', 'display.locale'])->group(function () {
     Route::get('/board/{branch}/{secret}', [ExperienceController::class, 'board'])->name('board.show');
     Route::get('/board/{branch}/{secret}/state', [ExperienceController::class, 'boardState'])->name('board.state');
     Route::post('/board/{branch}/{secret}/firebase', [ExperienceController::class, 'boardFirebase'])->name('board.firebase');
@@ -30,7 +30,7 @@ Route::middleware('throttle:queue-state')->group(function () {
     Route::post('/t/{secret}/firebase', [QueueController::class, 'firebaseTicket'])->name('ticket.firebase');
     Route::post('/t/{secret}/subscribe', [QueueController::class, 'subscribe'])->name('ticket.subscribe');
     Route::post('/t/{secret}/unsubscribe', [QueueController::class, 'unsubscribe'])->name('ticket.unsubscribe');
-    Route::get('/display/{counter}/{secret}', [QueueController::class, 'display'])->name('display.show');
-    Route::get('/display/{counter}/{secret}/state', [QueueController::class, 'displayState'])->name('display.state');
-    Route::post('/display/{counter}/{secret}/firebase', [QueueController::class, 'firebaseDisplay'])->name('display.firebase');
+    Route::get('/display/{counter}/{secret}', [QueueController::class, 'display'])->middleware('display.locale')->name('display.show');
+    Route::get('/display/{counter}/{secret}/state', [QueueController::class, 'displayState'])->middleware('display.locale')->name('display.state');
+    Route::post('/display/{counter}/{secret}/firebase', [QueueController::class, 'firebaseDisplay'])->middleware('display.locale')->name('display.firebase');
 });

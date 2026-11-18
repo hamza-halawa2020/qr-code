@@ -47,7 +47,7 @@ class BranchBoardService
     public function snapshot(Branch $branch): array
     {
         return ['name' => $branch->name, 'version' => $branch->version, 'updated_at' => now()->toIso8601String(),
-            'counters' => $branch->counters()->orderBy('number')->get()->map(fn ($counter) => ['id' => $counter->id, 'name' => $counter->name, 'number' => $counter->currentTicket()?->display_number, 'status' => $counter->currentTicket()?->status->label() ?? ($counter->is_paused ? 'في استراحة' : 'متاح')])->all()];
+            'counters' => $branch->counters()->orderBy('number')->get()->map(fn ($counter) => ['id' => $counter->id, 'name' => $counter->name, 'number' => $counter->currentTicket()?->display_number, 'status' => $counter->currentTicket()?->status->label() ?? ($counter->is_paused ? __('queue.board_counter_paused') : __('queue.board_counter_available'))])->all()];
     }
 
     private function authorize(Branch $branch, string $secret): void

@@ -7,9 +7,11 @@ use Filament\Pages\Page;
 
 class SystemStatus extends Page
 {
-    protected static ?string $navigationLabel = 'حالة التشغيل';
+    protected static ?string $navigationLabel = null;
+    protected static ?string $title = null;
 
-    protected static ?string $title = 'حالة الطابور والمزامنة';
+    public static function getNavigationLabel(): string { return __('queue.nav_system'); }
+    public function getTitle(): string { return __('queue.nav_system'); }
 
     protected static ?int $navigationSort = 4;
 

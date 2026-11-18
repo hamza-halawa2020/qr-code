@@ -9,9 +9,11 @@ use Filament\Pages\Page;
 
 class Appointments extends Page
 {
-    protected static ?string $navigationLabel = 'المواعيد المسبقة';
+    protected static ?string $navigationLabel = null;
+    protected static ?string $title = null;
 
-    protected static ?string $title = 'المواعيد والحجوزات';
+    public static function getNavigationLabel(): string { return __('queue.nav_appointments'); }
+    public function getTitle(): string { return __('queue.nav_appointments'); }
 
     protected static ?int $navigationSort = 4;
 
@@ -46,7 +48,7 @@ class Appointments extends Page
     public function createSlot(): void
     {
         app(AppointmentService::class)->createSlot(auth()->user(), $this->branchId, $this->only(['serviceId', 'date', 'time', 'capacity']));
-        Notification::make()->title('تم إضافة الموعد')->success()->send();
+        Notification::make()->title(__('queue.saved'))->success()->send();
     }
 
     protected function getViewData(): array

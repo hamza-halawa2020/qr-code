@@ -1,6 +1,7 @@
 const board = document.getElementById('branch-board');
 if (board) {
     const config = JSON.parse(document.getElementById('board-config').textContent);
+    const s = config.strings; // localised strings passed from Blade
     const status = document.getElementById('board-connection');
     let version = Number(config.initial.version), unsubscribe, auth, app;
     const apply = data => {
@@ -14,13 +15,13 @@ if (board) {
             return card;
         });
         document.getElementById('board-counters').replaceChildren(...cards);
-        status.textContent = `آخر تحديث: ${new Date().toLocaleTimeString('ar-EG')}`;
+        status.textContent = s.board_updated + new Date().toLocaleTimeString();
     };
     const refresh = async () => {
         try {
             const response = await fetch(board.dataset.stateUrl, { cache: 'no-store', headers: { Accept: 'application/json' } });
             if (!response.ok) throw new Error(); apply(await response.json());
-        } catch { status.textContent = 'تعذر الاتصال — البيانات قديمة'; }
+        } catch { status.textContent = s.board_conn_failed; }
     };
     const connect = async () => {
         if (!config.enabled) return;
@@ -37,5 +38,5 @@ if (board) {
     };
     apply(config.initial); refresh(); connect(); setInterval(refresh, 10000); setInterval(connect, 45 * 60 * 1000);
     window.addEventListener('online', () => { refresh(); connect(); });
-    window.addEventListener('offline', () => { status.textContent = 'الاتصال مقطوع — البيانات قديمة'; });
+    window.addEventListener('offline', () => { status.textContent = s.board_offline; });
 }

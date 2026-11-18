@@ -4,6 +4,7 @@ import './branch-board';
 const root = document.getElementById('live-queue');
 if (root) {
     const config = JSON.parse(document.getElementById('queue-config').textContent);
+    const s = config.strings; // localised strings passed from Blade
     const csrf = document.querySelector('meta[name="csrf-token"]').content;
     let version = Number(config.initial.version ?? 0), lastLive = 0;
     let auth, firebaseApp, messagingModule, unsubscribe;
@@ -21,11 +22,11 @@ if (root) {
     const apply = data => {
         if (Number(data.version) < version) return false;
         version = Number(data.version);
-        if (data.updated_at) text('last-updated', `آخر تحديث: ${new Date(data.updated_at).toLocaleTimeString('ar-EG')}`);
+        if (data.updated_at) text('last-updated', s.last_updated + new Date(data.updated_at).toLocaleTimeString());
         if (root.dataset.kind === 'counter') {
             text('display-name', data.name);
             text('display-number', data.number ?? '—');
-            text('display-label', data.number ? 'نتشرف بخدمة رقم' : data.paused ? 'الشباك في استراحة' : 'في انتظار العميل التالي');
+            text('display-label', data.number ? s.display_serving : data.paused ? s.display_paused : s.display_waiting);
         } else {
             activeTicket = ['waiting', 'deferred', 'called', 'serving'].includes(data.status);
             if (notificationButton) notificationButton.disabled = !activeTicket || !notificationsSupported || notificationBusy || !!currentPushToken;
@@ -35,25 +36,25 @@ if (root) {
             const near = document.getElementById('near-turn'); if (near) near.hidden = !data.near_turn;
             const rating = document.getElementById('rating-section'); if (rating) rating.hidden = data.status !== 'completed';
             text('ticket-heading', data.heading ?? data.label);
-            text('ticket-description', data.description ?? 'تابع حالة تذكرتك وشاشة الفرع.');
-            text('retry-note', data.retry_note ?? ''); text('ahead-description', data.ahead_label ?? 'منتظرين لنفس الخدمة قبلك');
-            text('ticket-message', data.status === 'called' ? 'دورك الآن، اتوجه إلى' : data.status === 'waiting' ? 'استنى النداء على رقمك' : data.label);
+            text('ticket-description', data.description ?? s.ticket_default_desc);
+            text('retry-note', data.retry_note ?? ''); text('ahead-description', data.ahead_label ?? s.ahead_service);
+            text('ticket-message', data.status === 'called' ? s.ticket_called : data.status === 'waiting' ? s.ticket_waiting : data.label);
             document.getElementById('cancel-ticket').hidden = !['waiting', 'deferred'].includes(data.status);
         }
         return true;
     };
     const post = async (url, body = {}) => {
         const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf }, body: JSON.stringify(body), cache: 'no-store' });
-        if (!response.ok) throw new Error('تعذر تنفيذ الطلب، حاول مرة أخرى.');
+        if (!response.ok) throw new Error(s.request_failed);
         return response.json();
     };
     const refresh = async () => {
-        if (!navigator.onLine) return connection('الاتصال مقطوع — البيانات قديمة، تابع شاشة الفرع');
+        if (!navigator.onLine) return connection(s.conn_offline);
         try {
             const response = await fetch(root.dataset.stateUrl, { headers: { Accept: 'application/json' }, cache: 'no-store' });
             if (!response.ok) throw new Error();
-            apply(await response.json()); connection('تم تحديث الحالة من الخادم');
-        } catch { connection('تعذر تحديث الحالة — تابع شاشة الفرع'); }
+            apply(await response.json()); connection(s.conn_refreshed);
+        } catch { connection(s.conn_refresh_failed); }
     };
     const connect = async () => {
         if (!config.enabled) return;
@@ -68,22 +69,22 @@ if (root) {
             unsubscribe = firestore.onSnapshot(firestore.doc(firestore.getFirestore(firebaseApp), credentials.path), { includeMetadataChanges: true }, snapshot => {
                 if (!snapshot.exists() || snapshot.metadata.fromCache) return;
                 if (!apply(snapshot.data())) { lastLive = 0; refresh(); return; }
-                lastLive = Date.now(); connection('متصل — تحديث مباشر');
+                lastLive = Date.now(); connection(s.conn_live);
             }, () => { lastLive = 0; refresh(); });
-        } catch { connection('تعذر الاتصال المباشر؛ نحاول تحديث دورك تلقائيًا'); }
+        } catch { connection(s.conn_live_failed); }
     };
     const prepareNotifications = async () => {
         if (!notificationButton) return;
         notificationButton.disabled = true;
-        if (!config.enabled) return text('notification-message', 'تنبيهات الموبايل غير متاحة حاليًا؛ تابع الصفحة وشاشة الفرع.');
-        if (!window.isSecureContext || !('Notification' in window) || !('serviceWorker' in navigator)) return text('notification-message', 'الإشعارات غير متاحة على هذا الاتصال أو المتصفح. تابع الصفحة وشاشة الفرع.');
+        if (!config.enabled) return text('notification-message', s.notif_unavailable);
+        if (!window.isSecureContext || !('Notification' in window) || !('serviceWorker' in navigator)) return text('notification-message', s.notif_insecure);
         try {
             messagingModule = await import('firebase/messaging');
             notificationsSupported = await messagingModule.isSupported();
             notificationButton.disabled = !notificationsSupported || !activeTicket;
-            if (!notificationsSupported) text('notification-message', 'الإشعارات غير مدعومة هنا. على iPhone جرّب إضافة الموقع للشاشة الرئيسية.');
+            if (!notificationsSupported) text('notification-message', s.notif_unsupported);
             if (notificationsSupported && Notification.permission === 'granted' && !optedOut()) await renewPushSubscription();
-        } catch { text('notification-message', 'تعذر تجهيز الإشعارات. تابع الصفحة وشاشة الفرع.'); }
+        } catch { text('notification-message', s.notif_prepare_failed); }
     };
     const updateNotificationButtons = () => {
         if (notificationButton) notificationButton.disabled = !activeTicket || !notificationsSupported || notificationBusy || !!currentPushToken;
@@ -103,9 +104,9 @@ if (root) {
             currentPushToken = token;
             removeForegroundListener ??= messagingModule.onMessage(messaging, payload => {
                 if (payload.data?.ticket_id && payload.data.ticket_id !== config.initial.id) return;
-                refresh(); text('notification-message', payload.data?.kind === 'near_turn' ? 'دورك قرب، خليك قريب وتابع الصفحة.' : 'تم النداء على رقمك، راجع الشباك الموضح.');
+                refresh(); text('notification-message', payload.data?.kind === 'near_turn' ? s.notif_near : s.notif_called);
             });
-            text('notification-message', 'تم تفعيل الإشعارات على الجهاز. تابع شاشات الفرع كمان.');
+            text('notification-message', s.notif_enabled);
         } finally { notificationBusy = false; updateNotificationButtons(); }
     };
     const stopNotifications = async () => {
@@ -113,11 +114,9 @@ if (root) {
         setOptOut(true); notificationBusy = true; updateNotificationButtons();
         try {
             await post(root.dataset.unsubscribeUrl, { token: currentPushToken });
-            // The FCM token can be shared by another open ticket. Opt out of
-            // this ticket on the server without revoking that device token.
             currentPushToken = null;
             removeForegroundListener?.(); removeForegroundListener = undefined;
-            text('notification-message', 'تم إيقاف إشعارات هذه التذكرة. تقدر تتابع دورك من الصفحة.');
+            text('notification-message', s.notif_stopped);
         } finally { notificationBusy = false; updateNotificationButtons(); }
     };
     const syncNotifications = async () => {
@@ -125,7 +124,7 @@ if (root) {
         try {
             if (Notification.permission !== 'granted' && currentPushToken) await stopNotifications();
             else if (!optedOut()) await renewPushSubscription();
-        } catch { text('notification-message', 'تعذر تحديث اشتراك الإشعارات. تابع الصفحة وشاشة الفرع.'); }
+        } catch { text('notification-message', s.notif_prepare_failed); }
     };
     notificationButton?.addEventListener('click', async event => {
         const button = event.currentTarget;
@@ -133,19 +132,18 @@ if (root) {
         button.disabled = true;
         try {
             const permission = await Notification.requestPermission();
-            if (permission !== 'granted') throw new Error('الإشعارات غير مفعلة. تقدر تتابع دورك من الصفحة.');
+            if (permission !== 'granted') throw new Error(s.notif_denied);
             setOptOut(false);
             await renewPushSubscription();
-        } catch (error) { text('notification-message', error.message || 'تعذر تفعيل الإشعارات.'); }
+        } catch (error) { text('notification-message', error.message || s.notif_error); }
         finally { updateNotificationButtons(); }
     });
-    stopNotificationButton?.addEventListener('click', () => stopNotifications().catch(() => text('notification-message', 'تعذر إيقاف الاشتراك. حاول تاني أو أوقف إذن الإشعارات من إعدادات المتصفح.')));
+    stopNotificationButton?.addEventListener('click', () => stopNotifications().catch(() => text('notification-message', s.notif_stop_error)));
     apply(config.initial); connect(); refresh(); prepareNotifications();
     setInterval(() => { if (Date.now() - lastLive > 60000) refresh(); }, 10000);
     setInterval(connect, 45 * 60 * 1000);
     setInterval(syncNotifications, 30 * 60 * 1000);
     window.addEventListener('online', () => { refresh(); connect(); syncNotifications(); });
-    window.addEventListener('offline', () => connection('الاتصال مقطوع — البيانات قديمة، تابع شاشة الفرع'));
+    window.addEventListener('offline', () => connection(s.conn_offline));
     document.addEventListener('visibilitychange', () => { if (!document.hidden) { refresh(); syncNotifications(); } });
 }
-document.querySelectorAll('form').forEach(form => form.addEventListener('submit', () => form.querySelectorAll('[data-submit]').forEach(button => { button.disabled = true; })));

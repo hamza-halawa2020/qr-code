@@ -15,12 +15,20 @@ enum TicketStatus: string
 
     public function label(): string
     {
-        return match ($this) {
-            self::Waiting => 'في الانتظار', self::Called => 'دورك الآن',
-            self::Deferred => 'في انتظار إعادة النداء',
-            self::Serving => 'جاري تقديم الخدمة', self::Completed => 'تمت الخدمة',
-            self::NoShow => 'لم يحضر', self::Cancelled => 'ملغاة', self::Expired => 'انتهت الصلاحية',
-        };
+        $key = 'queue.status_label_' . $this->value;
+        // Fall back to hard-coded Arabic if the key is somehow missing
+        $fallbacks = [
+            'waiting'   => 'في الانتظار',
+            'called'    => 'دورك الآن',
+            'deferred'  => 'في انتظار إعادة النداء',
+            'serving'   => 'جاري تقديم الخدمة',
+            'completed' => 'تمت الخدمة',
+            'no_show'   => 'لم يحضر',
+            'cancelled' => 'ملغاة',
+            'expired'   => 'انتهت الصلاحية',
+        ];
+        $translated = __($key);
+        return $translated !== $key ? $translated : ($fallbacks[$this->value] ?? $this->value);
     }
 
     public function isActive(): bool

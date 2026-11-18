@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Http\Middleware\SetPanelLocale;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -21,13 +22,14 @@ class AdminPanelProvider extends PanelProvider
     public function panel(Panel $panel): Panel
     {
         return $panel->default()->id('admin')->path('admin')->login()
-            ->brandName('دورك | إدارة الانتظار')->colors(['primary' => Color::Emerald])
+            ->brandName(__('queue.panel_brand'))->colors(['primary' => Color::Emerald])
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->middleware([
                 EncryptCookies::class, AddQueuedCookiesToResponse::class, StartSession::class,
                 AuthenticateSession::class, ShareErrorsFromSession::class, ValidateCsrfToken::class,
                 SubstituteBindings::class, DisableBladeIconComponents::class, DispatchServingFilamentEvent::class,
+                SetPanelLocale::class,
             ])->authMiddleware([Authenticate::class]);
     }
 }

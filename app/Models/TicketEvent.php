@@ -22,12 +22,25 @@ class TicketEvent extends Model
 
     public function label(): string
     {
+        $key = 'queue.event_' . $this->type;
+        $translated = __($key);
+        if ($translated !== $key) {
+            return $translated;
+        }
+        // Arabic fallbacks for unrecognised types
         return match ($this->type) {
-            'booked' => 'حجز التذكرة', 'called' => 'استدعاء العميل', 'recalled' => 'إعادة النداء',
-            'start' => 'بدء الخدمة', 'complete' => 'إنهاء الخدمة', 'absent' => 'تسجيل الغياب',
-            'cancel' => 'إلغاء التذكرة', 'day_closed' => 'انتهاء يوم العمل',
-            'deferred' => 'تأجيل لإعادة النداء', 'retry_ready' => 'جاهز لإعادة النداء بعد خدمة عميل آخر', 'retry_called' => 'نداء فرصة إضافية',
-            default => $this->type,
+            'booked'       => 'حجز التذكرة',
+            'called'       => 'استدعاء العميل',
+            'recalled'     => 'إعادة النداء',
+            'start'        => 'بدء الخدمة',
+            'complete'     => 'إنهاء الخدمة',
+            'absent'       => 'تسجيل الغياب',
+            'cancel'       => 'إلغاء التذكرة',
+            'day_closed'   => 'انتهاء يوم العمل',
+            'deferred'     => 'تأجيل لإعادة النداء',
+            'retry_ready'  => 'جاهز لإعادة النداء',
+            'retry_called' => 'نداء فرصة إضافية',
+            default        => $this->type,
         };
     }
 }

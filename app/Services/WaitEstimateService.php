@@ -13,7 +13,7 @@ class WaitEstimateService
             return ['minutes' => null, 'samples' => 0, 'label' => ''];
         }
         if ($ticket->appointment_at?->isFuture()) {
-            return ['minutes' => null, 'samples' => 0, 'label' => 'أولوية موعدك تبدأ الساعة '.$ticket->appointment_at->timezone($ticket->branch->timezone)->format('H:i').'.'];
+            return ['minutes' => null, 'samples' => 0, 'label' => __('queue.estimate_appointment', ['time' => $ticket->appointment_at->timezone($ticket->branch->timezone)->format('H:i')])];
         }
         // Recent completed services only, scoped to this branch and service.
         $samples = Ticket::where('branch_id', $ticket->branch_id)->where('branch_service_id', $ticket->branch_service_id)
@@ -25,7 +25,7 @@ class WaitEstimateService
                 ->where(fn ($query) => $query->where('branch_id', $ticket->branch_id)->orWhere('role', 'admin'))
                 ->when($ticket->branch_service_id, fn ($query) => $query->whereHas('services', fn ($query) => $query->where('branch_services.id', $ticket->branch_service_id))))->get();
         if ($samples->count() < 5 || $counters->isEmpty()) {
-            return ['minutes' => null, 'samples' => $samples->count(), 'label' => $counters->isEmpty() ? 'التقدير غير متاح حتى يتوفر شباك مناسب.' : 'نجمع بيانات كافية لتقدير الانتظار.'];
+            return ['minutes' => null, 'samples' => $samples->count(), 'label' => $counters->isEmpty() ? __('queue.estimate_no_counter') : __('queue.estimate_collecting')];
         }
         $average = $samples->avg();
         $loads = $counters->map(function ($counter) use ($average) {
@@ -44,6 +44,6 @@ class WaitEstimateService
         }
         $minutes = max(0, (int) ceil(min($loads) / 60));
 
-        return ['minutes' => $minutes, 'samples' => $samples->count(), 'label' => "حوالي {$minutes} دقيقة — تقدير يتغير حسب توفر الموظفين والخدمات الأخرى."];
+        return ['minutes' => $minutes, 'samples' => $samples->count(), 'label' => __('queue.estimate_minutes', ['minutes' => $minutes])];
     }
 }

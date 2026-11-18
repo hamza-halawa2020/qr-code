@@ -54,12 +54,18 @@ class OperationsService
     {
         $admin = User::findOrFail($actor->id);
         abort_unless($admin->is_active && $admin->role === 'admin', 403);
-        $data = Validator::make($input, ['automaticQueue' => 'required|boolean', 'noShowSeconds' => 'required|integer|min:30|max:900', 'missedTurnRetries' => 'sometimes|required|integer|min:0|max:10'])->validate();
+        $data = Validator::make($input, ['automaticQueue' => 'required|boolean', 'noShowSeconds' => 'required|integer|min:30|max:900', 'missedTurnRetries' => 'sometimes|required|integer|min:0|max:10', 'displayLocale' => 'sometimes|in:ar,en', 'panelLocale' => 'sometimes|in:ar,en'])->validate();
         DB::transaction(function () use ($branchId, $data) {
             $branch = Branch::whereKey($branchId)->lockForUpdate()->firstOrFail();
             $branch->update(['automatic_queue' => $data['automaticQueue'], 'no_show_after_seconds' => $data['noShowSeconds']]);
             if (array_key_exists('missedTurnRetries', $data)) {
                 $branch->update(['missed_turn_retries' => $data['missedTurnRetries']]);
+            }
+            if (array_key_exists('displayLocale', $data)) {
+                $branch->update(['display_locale' => $data['displayLocale']]);
+            }
+            if (array_key_exists('panelLocale', $data)) {
+                $branch->update(['panel_locale' => $data['panelLocale']]);
             }
         }, 5);
     }
