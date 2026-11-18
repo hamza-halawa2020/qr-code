@@ -15,10 +15,9 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->call([
+            DemoSeeder::class
+        ]);
 
-    DemoSeeder::class;
-        // User::factory(10)->create();
-
-        // Production accounts are created explicitly; no default password.
     }
 }
