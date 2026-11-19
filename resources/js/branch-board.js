@@ -15,6 +15,11 @@ if (board) {
             return card;
         });
         document.getElementById('board-counters').replaceChildren(...cards);
+        const hours = document.getElementById('board-hours');
+        if (hours && data.today_hours) {
+            const h = data.today_hours;
+            hours.textContent = s.hours_today + ': ' + (h.is_closed ? s.day_closed : h.opens_at + ' — ' + h.closes_at);
+        }
         status.textContent = s.board_updated + new Date().toLocaleTimeString();
     };
     const refresh = async () => {

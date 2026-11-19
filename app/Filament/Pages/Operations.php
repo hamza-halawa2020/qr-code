@@ -36,6 +36,9 @@ class Operations extends Page
 
     public string $closesAt = '17:00';
 
+    /** Keyed 0=Sunday … 6=Saturday. */
+    public array $weeklyHours = [];
+
     public ?int $selectedBranch = null;
 
     public string $employeeName = '';
@@ -97,6 +100,7 @@ class Operations extends Page
 
     public function mount(): void
     {
+        $this->weeklyHours = $this->defaultWeeklyHours();
         $this->selectedBranch = $this->branches()->first()?->id;
         $this->updatedSelectedBranch();
     }
@@ -107,11 +111,20 @@ class Operations extends Page
         if ($branch) {
             $this->opensAt = $branch->opens_at;
             $this->closesAt = $branch->closes_at;
+            $this->weeklyHours = $branch->weeklySchedule()->mapWithKeys(fn ($row) => [
+                $row->day_of_week => [
+                    'is_closed' => (bool) $row->is_closed,
+                    'opens_at'  => $row->opens_at ?: $branch->opens_at,
+                    'closes_at' => $row->closes_at ?: $branch->closes_at,
+                ],
+            ])->all();
             $this->noShowSeconds = $branch->no_show_after_seconds;
             $this->automaticQueue = (int) $branch->automatic_queue;
             $this->missedTurnRetries = $branch->missed_turn_retries;
             $this->displayLocale = $branch->display_locale ?? 'ar';
             $this->panelLocale = $branch->panel_locale ?? 'ar';
+        } else {
+            $this->weeklyHours = $this->defaultWeeklyHours();
         }
         $this->displayUrl = null;
         $this->boardUrl = null;
@@ -124,16 +137,30 @@ class Operations extends Page
 
     public function createBranch(): void
     {
-        $branch = $this->service()->createBranch(auth()->user(), $this->only(['branchName', 'opensAt', 'closesAt']));
+        $branch = $this->service()->createBranch(auth()->user(), $this->only(['branchName', 'opensAt', 'closesAt', 'weeklyHours']));
         $this->selectedBranch = $branch->id;
         $this->branchName = '';
+        $this->updatedSelectedBranch();
         $this->done();
     }
 
     public function saveHours(): void
     {
-        $this->service()->saveSettings(auth()->user(), $this->selectedBranch, $this->only(['opensAt', 'closesAt']));
+        $this->service()->saveWeeklyHours(auth()->user(), $this->selectedBranch, ['weeklyHours' => $this->weeklyHours]);
+        $this->resetValidation(['weeklyHours']);
+        $this->updatedSelectedBranch();
         $this->done();
+    }
+
+    /** The two legacy time inputs act as a quick "apply to every day" shortcut. */
+    public function updatedOpensAt(): void
+    {
+        $this->applyWeeklyDefault('opens_at', $this->opensAt);
+    }
+
+    public function updatedClosesAt(): void
+    {
+        $this->applyWeeklyDefault('closes_at', $this->closesAt);
     }
 
     public function saveAutomation(): void
@@ -260,6 +287,25 @@ class Operations extends Page
         $this->service()->assignEmployee(auth()->user(), $this->selectedBranch, $counterId, $this->assignmentEmployeeId);
         $this->assignmentEmployeeId = null;
         $this->done();
+    }
+
+    private function defaultWeeklyHours(): array
+    {
+        return collect(range(0, 6))->mapWithKeys(fn (int $day) => [$day => [
+            'is_closed' => false,
+            'opens_at'  => $this->opensAt,
+            'closes_at' => $this->closesAt,
+        ]])->all();
+    }
+
+    private function applyWeeklyDefault(string $field, string $value): void
+    {
+        if ($this->weeklyHours === []) {
+            $this->weeklyHours = $this->defaultWeeklyHours();
+        }
+        foreach ($this->weeklyHours as $day => $row) {
+            $this->weeklyHours[$day][$field] = $value;
+        }
     }
 
     private function branches()

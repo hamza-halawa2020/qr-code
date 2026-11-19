@@ -1,9 +1,51 @@
 <x-filament-panels::page>
 <div class="queue-grid">
     @if($errors->any())<div role="alert">{{ $errors->first() }}</div>@endif
-    <section class="queue-card"><div class="queue-title">{{ __('queue.ops_current_branch') }}</div><select class="queue-input" wire:model.live="selectedBranch" aria-label="{{ __('queue.ops_current_branch') }}"><option value="">{{ __('queue.ops_select_branch') }}</option>@foreach($branches as $item)<option value="{{ $item->id }}">{{ $item->name }}</option>@endforeach</select>
-    @if($branch)<p style="margin:16px 0">{{ $branch->is_open ? __('queue.ops_booking_on') : __('queue.ops_booking_off') }} — {{ $branch->opens_at }} {{ __('queue.ops_work_start') === 'Opening time' ? 'to' : 'إلى' }} {{ $branch->closes_at }}</p><div class="queue-row"><x-filament::button color="gray" wire:click="toggleBooking">{{ __('queue.ops_toggle_booking') }}</x-filament::button><a class="queue-link" href="{{ route('branch.show', $branch) }}" target="_blank" rel="noopener">{{ __('queue.ops_customer_page') }}</a><a class="queue-link" href="{{ route('branch.qr', $branch) }}">{{ __('queue.ops_qr') }}</a></div>
-    <form wire:submit="saveHours" class="queue-row" style="margin-top:20px"><label>{{ __('queue.ops_work_start') }} <input class="queue-input" type="time" wire:model="opensAt" required></label><label>{{ __('queue.ops_work_end') }} <input class="queue-input" type="time" wire:model="closesAt" required></label><x-filament::button type="submit">{{ __('queue.ops_save_hours') }}</x-filament::button></form>@endif</section>
+    <section class="queue-card">
+        <div class="queue-title">{{ __('queue.ops_current_branch') }}</div>
+        <select class="queue-input" wire:model.live="selectedBranch" aria-label="{{ __('queue.ops_current_branch') }}"><option value="">{{ __('queue.ops_select_branch') }}</option>@foreach($branches as $item)<option value="{{ $item->id }}">{{ $item->name }}</option>@endforeach</select>
+        @if($branch)
+            <p style="margin:16px 0">{{ $branch->is_open ? __('queue.ops_booking_on') : __('queue.ops_booking_off') }} — {{ __('queue.hours_today') }}: {{ $branch->hoursLabelFor() }}</p>
+            <div class="queue-row"><x-filament::button color="gray" wire:click="toggleBooking">{{ __('queue.ops_toggle_booking') }}</x-filament::button><a class="queue-link" href="{{ route('branch.show', $branch) }}" target="_blank" rel="noopener">{{ __('queue.ops_customer_page') }}</a><a class="queue-link" href="{{ route('branch.qr', $branch) }}">{{ __('queue.ops_qr') }}</a></div>
+
+            <form wire:submit="saveHours" style="margin-top:20px">
+                <div class="queue-title">{{ __('queue.ops_weekly_hours_title') }}</div>
+                <p class="queue-muted">{{ __('queue.ops_hours_note') }}</p>
+                <div class="queue-row" style="margin:12px 0">
+                    <label>{{ __('queue.ops_work_start') }} <input class="queue-input" type="time" wire:model="opensAt" required></label>
+                    <label>{{ __('queue.ops_work_end') }} <input class="queue-input" type="time" wire:model="closesAt" required></label>
+                </div>
+                <p class="queue-muted">{{ __('queue.ops_quick_hours_note') }}</p>
+                @php($dayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'])
+                <div style="overflow-x:auto">
+                    <table class="queue-table weekly-hours-table">
+                        <thead><tr>
+                            <th>{{ __('queue.ops_hours_day') }}</th>
+                            <th>{{ __('queue.ops_hours_closed') }}</th>
+                            <th>{{ __('queue.ops_work_start') }}</th>
+                            <th>{{ __('queue.ops_work_end') }}</th>
+                        </tr></thead>
+                        <tbody>
+                        @foreach(range(0, 6) as $day)
+                            <tr @class(['is-today' => $day === now($branch->timezone)->dayOfWeek])>
+                                <td>{{ __('queue.day_'.$dayKeys[$day]) }}@if($day === now($branch->timezone)->dayOfWeek) <small>({{ __('queue.hours_today') }})</small>@endif</td>
+                                <td><input type="checkbox" wire:model="weeklyHours.{{ $day }}.is_closed" aria-label="{{ __('queue.ops_hours_closed') }} — {{ __('queue.day_'.$dayKeys[$day]) }}"></td>
+                                <td><input class="queue-input" type="time" wire:model="weeklyHours.{{ $day }}.opens_at" @disabled($weeklyHours[$day]['is_closed'] ?? false) @required(empty($weeklyHours[$day]['is_closed']))></td>
+                                <td><input class="queue-input" type="time" wire:model="weeklyHours.{{ $day }}.closes_at" @disabled($weeklyHours[$day]['is_closed'] ?? false) @required(empty($weeklyHours[$day]['is_closed']))></td>
+                            </tr>
+                        @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                @error('weeklyHours')<p role="alert">{{ $message }}</p>@enderror
+                @foreach(range(0, 6) as $day)
+                    @error("weeklyHours.$day.opens_at")<p role="alert">{{ $message }}</p>@enderror
+                    @error("weeklyHours.$day.closes_at")<p role="alert">{{ $message }}</p>@enderror
+                @endforeach
+                <x-filament::button type="submit" style="margin-top:16px">{{ __('queue.ops_save_hours') }}</x-filament::button>
+            </form>
+        @endif
+    </section>
     @if(auth()->user()->role === 'admin')<section class="queue-card"><div class="queue-title">{{ __('queue.ops_add_branch') }}</div><form wire:submit="createBranch" class="queue-row"><input class="queue-input" wire:model="branchName" placeholder="{{ __('queue.ops_branch_name') }}" aria-label="{{ __('queue.ops_branch_name') }}" required><x-filament::button type="submit">{{ __('queue.ops_add_branch') }}</x-filament::button></form><p class="queue-muted">{{ __('queue.ops_branch_note') }}</p></section>@endif
     @if($branch && auth()->user()->role === 'admin')
     <section class="queue-card"><div class="queue-title">{{ __('queue.ops_automation_title') }}</div><form wire:submit="saveAutomation" class="queue-row"><label>{{ __('queue.ops_queue_mode') }} <select class="queue-input" wire:model="automaticQueue"><option value="0">{{ __('queue.ops_mode_manual') }}</option><option value="1">{{ __('queue.ops_mode_auto') }}</option></select></label><label>{{ __('queue.ops_no_show_seconds') }} <input class="queue-input" type="number" wire:model="noShowSeconds" min="30" max="900" required></label><label>{{ __('queue.ops_missed_retries') }} <input class="queue-input" type="number" wire:model="missedTurnRetries" min="0" max="10" required></label>

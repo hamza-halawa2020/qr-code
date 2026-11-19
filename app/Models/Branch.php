@@ -2,13 +2,22 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 
 class Branch extends Model
 {
     protected $guarded = [];
     protected $hidden = ['board_token_hash'];
+
+    /** Match the database defaults so freshly created models also have valid hours. */
+    protected $attributes = [
+        'timezone'  => 'Africa/Cairo',
+        'opens_at'  => '09:00',
+        'closes_at' => '17:00',
+    ];
 
     protected function casts(): array
     {
@@ -30,10 +39,71 @@ class Branch extends Model
         return $this->hasMany(Ticket::class);
     }
 
+    public function schedules(): HasMany
+    {
+        return $this->hasMany(BranchSchedule::class);
+    }
+
+    /** Always returns 7 rows (0=Sunday … 6=Saturday), filling gaps from the legacy columns. */
+    public function weeklySchedule(): Collection
+    {
+        $saved = ($this->relationLoaded('schedules') ? $this->getRelation('schedules') : $this->schedules()->get())->keyBy('day_of_week');
+
+        return collect(range(0, 6))->map(fn (int $day) => $saved->get($day) ?? new BranchSchedule([
+            'branch_id'   => $this->id,
+            'day_of_week' => $day,
+            'opens_at'    => $this->opens_at,
+            'closes_at'   => $this->closes_at,
+            'is_closed'   => false,
+        ]));
+    }
+
+    public function hoursFor(Carbon|string|null $date = null): array
+    {
+        $moment = $this->branchMoment($date);
+        $row = $this->weeklySchedule()->get($moment->dayOfWeek);
+
+        return [
+            'opens_at'  => $row->opens_at ?: $this->opens_at,
+            'closes_at' => $row->closes_at ?: $this->closes_at,
+            'is_closed' => (bool) $row->is_closed,
+        ];
+    }
+
+    public function hoursLabelFor(Carbon|string|null $date = null): string
+    {
+        $hours = $this->hoursFor($date);
+
+        return $hours['is_closed']
+            ? __('queue.day_closed')
+            : $hours['opens_at'].' — '.$hours['closes_at'];
+    }
+
+    public function acceptsBookingsAt(Carbon $moment): bool
+    {
+        $local = $moment->copy()->timezone($this->timezone ?: 'Africa/Cairo');
+        $hours = $this->hoursFor($local);
+        $time = $local->format('H:i');
+
+        return $this->is_open
+            && ! $hours['is_closed']
+            && $time >= $hours['opens_at']
+            && $time < $hours['closes_at'];
+    }
+
     public function acceptsBookings(): bool
     {
-        $time = now($this->timezone)->format('H:i');
+        return $this->acceptsBookingsAt(now());
+    }
 
-        return $this->is_open && $time >= $this->opens_at && $time < $this->closes_at;
+    private function branchMoment(Carbon|string|null $date): Carbon
+    {
+        $timezone = $this->timezone ?: 'Africa/Cairo';
+
+        if ($date instanceof Carbon) {
+            return $date->copy()->timezone($timezone);
+        }
+
+        return $date ? Carbon::parse($date, $timezone) : now($timezone);
     }
 }

@@ -3,6 +3,7 @@
         <span class="eyebrow">{{ $branch->name }}</span>
         <div>{!! __('queue.branch_heading') !!}</div>
         <p>{{ __('queue.branch_subheading') }}</p>
+        @include('queue.partials.weekly-hours', ['branch' => $branch])
         <p><a class="button secondary" href="{{ route('appointments.index', $branch) }}">{{ __('queue.appointment_cta') }}</a></p>
         <section class="panel booking-panel">
             <span class="status-dot {{ $branch->acceptsBookings() ? '' : 'off' }}">
@@ -36,7 +37,7 @@
                 <p>{{ __('queue.no_services_body') }}</p>
             @else
                 <div>{{ __('queue.closed_heading') }}</div>
-                <p>{{ $branch->opens_at }} — {{ $branch->closes_at }}</p>
+                <p class="muted">{{ __('queue.closed_hours_note') }}</p>
             @endif
         </section>
         <p class="muted">{{ __('queue.queue_note') }}</p>

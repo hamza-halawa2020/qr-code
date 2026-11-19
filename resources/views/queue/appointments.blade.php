@@ -3,6 +3,7 @@
     <span class="eyebrow">{{ $branch->name }}</span>
     <div>{{ __('queue.appt_heading') }}</div>
     <p>{{ __('queue.appt_priority_note') }}</p>
+    @include('queue.partials.weekly-hours', ['branch' => $branch])
     <section class="panel">
         <form method="get" class="booking-form">
             <label>{{ __('queue.label_branch') }}

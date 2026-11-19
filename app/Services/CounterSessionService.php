@@ -60,9 +60,11 @@ class CounterSessionService
     public function closeBusinessDay(Branch $branch): void
     {
         $local = now($branch->timezone);
+        $hours = $branch->hoursFor($local);
+        $cutoff = $hours['is_closed'] ? '00:00' : $hours['closes_at'];
         $sessions = CounterSession::with('counter')->where('branch_id', $branch->id)->whereNull('ended_at')->get();
         foreach ($sessions as $session) {
-            $closed = $session->business_date->toDateString() < $local->toDateString() || $local->format('H:i') >= $branch->closes_at;
+            $closed = $session->business_date->toDateString() < $local->toDateString() || $local->format('H:i') >= $cutoff;
             if ($closed && ! $session->counter->currentTicket()) {
                 $this->closeForCounter($session->counter, 'day_closed');
             }

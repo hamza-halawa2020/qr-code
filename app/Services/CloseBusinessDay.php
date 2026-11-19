@@ -15,9 +15,11 @@ class CloseBusinessDay
         return DB::transaction(function () use ($branch) {
             $branch = Branch::whereKey($branch->id)->lockForUpdate()->firstOrFail();
             $local = now($branch->timezone);
-            $query = Ticket::where('branch_id', $branch->id)->whereIn('status', ['waiting', 'called', 'deferred'])->where(function ($q) use ($local, $branch) {
+            $hours = $branch->hoursFor($local);
+            $cutoff = $hours['is_closed'] ? '00:00' : $hours['closes_at'];
+            $query = Ticket::where('branch_id', $branch->id)->whereIn('status', ['waiting', 'called', 'deferred'])->where(function ($q) use ($local, $cutoff) {
                 $q->whereDate('business_date', '<', $local->toDateString());
-                if ($local->format('H:i') >= $branch->closes_at) {
+                if ($local->format('H:i') >= $cutoff) {
                     $q->orWhereDate('business_date', $local->toDateString());
                 }
             });

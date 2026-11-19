@@ -46,7 +46,23 @@ class BranchBoardService
 
     public function snapshot(Branch $branch): array
     {
-        return ['name' => $branch->name, 'version' => $branch->version, 'updated_at' => now()->toIso8601String(),
+        $branch->loadMissing('schedules');
+        $today = $branch->hoursFor();
+
+        return [
+            'name' => $branch->name,
+            'version' => $branch->version,
+            'updated_at' => now()->toIso8601String(),
+            'today_hours' => $today,
+            'hours_label' => $branch->hoursLabelFor(),
+            'schedule' => $branch->weeklySchedule()->map(fn ($row) => [
+                'day' => $row->day_of_week,
+                'day_label' => $row->dayLabel(),
+                'opens_at' => $row->opens_at,
+                'closes_at' => $row->closes_at,
+                'is_closed' => (bool) $row->is_closed,
+                'label' => $row->hoursLabel(),
+            ])->all(),
             'counters' => $branch->counters()->orderBy('number')->get()->map(fn ($counter) => ['id' => $counter->id, 'name' => $counter->name, 'number' => $counter->currentTicket()?->display_number, 'status' => $counter->currentTicket()?->status->label() ?? ($counter->is_paused ? __('queue.board_counter_paused') : __('queue.board_counter_available'))])->all()];
     }
 

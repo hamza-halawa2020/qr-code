@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Enums\TicketStatus;
 use App\Models\Branch;
+use App\Models\BranchSchedule;
 use App\Models\BranchService;
 use App\Models\Counter;
 use App\Models\Ticket;
@@ -46,6 +47,20 @@ class DemoSeeder extends Seeder
             'missed_turn_retries'   => 2,
             'board_token_hash'      => hash('sha256', $boardSecret = Str::random(64)),
         ]);
+
+        // A varied weekly schedule so the customer-facing hours are easy to see.
+        $weeklyHours = [
+            0 => ['is_closed' => true,  'opens_at' => null,    'closes_at' => null],   // Sunday
+            1 => ['is_closed' => false, 'opens_at' => '08:00', 'closes_at' => '17:00'],
+            2 => ['is_closed' => false, 'opens_at' => '08:00', 'closes_at' => '17:00'],
+            3 => ['is_closed' => false, 'opens_at' => '08:00', 'closes_at' => '17:00'],
+            4 => ['is_closed' => false, 'opens_at' => '08:00', 'closes_at' => '17:00'],
+            5 => ['is_closed' => false, 'opens_at' => '09:00', 'closes_at' => '15:00'], // Friday
+            6 => ['is_closed' => false, 'opens_at' => '10:00', 'closes_at' => '16:00'], // Saturday
+        ];
+        foreach ($weeklyHours as $day => $row) {
+            BranchSchedule::create(['branch_id' => $branch->id, 'day_of_week' => $day] + $row);
+        }
 
         // ----------------------------------------------------------------
         // Services

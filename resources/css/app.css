@@ -13,3 +13,5 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+.weekly-hours{margin:16px 0}.weekly-hours-title{font-size:12px;font-weight:700;color:#6a7f63;margin-bottom:6px}.hours-list{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:13px}.hours-list li{display:flex;justify-content:space-between;gap:16px;padding:5px 8px;border-radius:8px;color:#6c7b73}.hours-list li.is-today{background:#e8f1e7;color:#164b3e;font-weight:700}.hours-list b{font-variant-numeric:tabular-nums;white-space:nowrap}.branch-card .weekly-hours{margin:10px 0 14px}.branch-card .hours-list{font-size:11px}.branch-card .hours-list li{padding:3px 6px}

@@ -30,10 +30,20 @@ class OperationsService
     {
         abort_unless($this->access->canManage($user), 403);
         abort_unless($user->role === 'admin', 403);
-        $data = Validator::make($input, ['branchName' => 'required|string|max:120', ...$this->hourRules()])->validate();
+        $data = Validator::make($input, ['branchName' => 'required|string|max:120'])->validate();
+        $weekly = $this->prepareWeeklyHours($input);
+        $default = collect($weekly)->first(fn (array $row) => ! $row['is_closed']) ?? ['opens_at' => '09:00', 'closes_at' => '17:00'];
 
-        return DB::transaction(function () use ($data) {
-            $branch = Branch::create(['name' => $data['branchName'], 'opens_at' => $data['opensAt'], 'closes_at' => $data['closesAt'], 'timezone' => 'Africa/Cairo']);
+        return DB::transaction(function () use ($data, $weekly, $default) {
+            $branch = Branch::create([
+                'name'      => $data['branchName'],
+                'opens_at'  => $default['opens_at'],
+                'closes_at' => $default['closes_at'],
+                'timezone'  => 'Africa/Cairo',
+            ]);
+            foreach ($weekly as $day => $row) {
+                $branch->schedules()->create(['day_of_week' => $day] + $row);
+            }
             $branch->services()->create(['name' => 'خدمة عامة']);
 
             return $branch;
@@ -43,11 +53,13 @@ class OperationsService
     public function saveSettings(User $user, ?int $branchId, array $input): void
     {
         $branch = $this->access->authorizedBranch($user, $branchId);
-        $data = Validator::make($input, $this->hourRules())->validate();
-        DB::transaction(function () use ($branch, $data) {
-            $branch = Branch::whereKey($branch->id)->lockForUpdate()->firstOrFail();
-            $branch->update(['opens_at' => $data['opensAt'], 'closes_at' => $data['closesAt']]);
-        });
+        $weekly = $this->prepareWeeklyHours($input);
+        DB::transaction(fn () => $this->persistWeeklyHours($branch, $weekly));
+    }
+
+    public function saveWeeklyHours(User $user, ?int $branchId, array $input): void
+    {
+        $this->saveSettings($user, $branchId, ['weeklyHours' => $input['weeklyHours'] ?? []]);
     }
 
     public function saveAutomation(User $actor, ?int $branchId, array $input): void
@@ -230,6 +242,86 @@ class OperationsService
             $service = $branch->services()->findOrFail($serviceId);
             $service->update(['is_active' => ! $service->is_active]);
         });
+    }
+
+    /** Accept the new weekly form, or fall back to the old opensAt/closesAt pair. */
+    private function prepareWeeklyHours(array $input): array
+    {
+        // Always validate the legacy pair when it is supplied. It is still the
+        // fallback/default used by older callers and keeps old form errors intact.
+        $legacy = array_key_exists('opensAt', $input) && array_key_exists('closesAt', $input)
+            ? Validator::make($input, $this->hourRules())->validate()
+            : null;
+
+        if (isset($input['weeklyHours']) && is_array($input['weeklyHours'])) {
+            return $this->validateWeeklyHours($input['weeklyHours']);
+        }
+
+        abort_unless($legacy !== null, 422);
+
+        return collect(range(0, 6))->mapWithKeys(fn (int $day) => [$day => [
+            'is_closed' => false,
+            'opens_at'  => $legacy['opensAt'],
+            'closes_at' => $legacy['closesAt'],
+        ]])->all();
+    }
+
+    private function validateWeeklyHours(array $weekly): array
+    {
+        $rows = [];
+        $errors = [];
+
+        foreach (range(0, 6) as $day) {
+            $row = $weekly[$day] ?? null;
+            if (! is_array($row)) {
+                $errors["weeklyHours.$day"] = ['اختار مواعيد هذا اليوم.'];
+                continue;
+            }
+
+            $closed = filter_var($row['is_closed'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            if ($closed) {
+                $rows[$day] = ['is_closed' => true, 'opens_at' => null, 'closes_at' => null];
+                continue;
+            }
+
+            $validator = Validator::make($row, [
+                'opens_at'  => 'required|date_format:H:i',
+                'closes_at' => 'required|date_format:H:i|after:opens_at',
+            ]);
+            if ($validator->fails()) {
+                foreach ($validator->errors()->messages() as $field => $messages) {
+                    $errors["weeklyHours.$day.$field"] = $messages;
+                }
+                continue;
+            }
+
+            $data = $validator->validated();
+            $rows[$day] = ['is_closed' => false, 'opens_at' => $data['opens_at'], 'closes_at' => $data['closes_at']];
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+
+        return $rows;
+    }
+
+    private function persistWeeklyHours(Branch $branch, array $weekly): void
+    {
+        $branch = Branch::whereKey($branch->id)->lockForUpdate()->firstOrFail();
+        $default = collect($weekly)->first(fn (array $row) => ! $row['is_closed']) ?? ['opens_at' => '09:00', 'closes_at' => '17:00'];
+        $branch->update(['opens_at' => $default['opens_at'], 'closes_at' => $default['closes_at']]);
+
+        foreach ($weekly as $day => $row) {
+            $branch->schedules()->updateOrCreate(['day_of_week' => $day], $row);
+        }
+
+        // The public board reads hours from Firebase, so publish the new schedule.
+        $branch->increment('version');
+        OutboxMessage::create(['branch_id' => $branch->id, 'version' => $branch->version, 'type' => 'hours_changed']);
+        if (config('firebase.enabled')) {
+            PublishBranch::dispatch($branch->id)->afterCommit();
+        }
     }
 
     private function hourRules(): array

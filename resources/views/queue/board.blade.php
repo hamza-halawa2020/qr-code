@@ -4,6 +4,7 @@
          data-auth-url="{{ route('board.firebase', [$branch, $secret]) }}">
         <div>{{ $branch->name }}</div>
         <p>{{ __('queue.board_note') }}</p>
+        <p class="muted"><span id="board-hours">{{ __('queue.hours_today') }}: {{ $branch->hoursLabelFor() }}</span></p>
         <div class="branch-grid" id="board-counters">
             @foreach($snapshot['counters'] as $item)
                 <section class="panel">

@@ -17,7 +17,7 @@ class CustomerQueueService
 
     public function branches(): Collection
     {
-        return Branch::orderBy('name')->get();
+        return Branch::with('schedules')->orderBy('name')->get();
     }
 
     public function branchData(Branch $branch, Session $session): array

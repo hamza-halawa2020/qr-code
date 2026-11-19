@@ -11,7 +11,7 @@
                     {{ $branch->acceptsBookings() ? __('queue.branch_open') : __('queue.branch_closed') }}
                 </span>
                 <div>{{ $branch->name }}</div>
-                <p>{{ __('queue.branch_hours') }} {{ $branch->opens_at }} — {{ $branch->closes_at }}</p>
+                @include('queue.partials.weekly-hours', ['branch' => $branch])
                 <strong>{{ __('queue.branch_enter') }}</strong>
             </a>
         @empty
