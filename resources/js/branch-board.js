@@ -24,7 +24,7 @@ if (board) {
         } catch { status.textContent = s.board_conn_failed; }
     };
     const connect = async () => {
-        if (!config.enabled) return;
+        if (!config.enabled) { status.textContent = s.conn_live_disabled; return; }
         try {
             const [{ initializeApp }, authModule, firestore] = await Promise.all([import('firebase/app'), import('firebase/auth'), import('firebase/firestore')]);
             app ??= initializeApp(config.firebase); auth ??= authModule.getAuth(app);
@@ -33,10 +33,10 @@ if (board) {
             if (!response.ok) throw new Error();
             const credentials = await response.json(); await authModule.signInWithCustomToken(auth, credentials.token);
             unsubscribe?.();
-            unsubscribe = firestore.onSnapshot(firestore.doc(firestore.getFirestore(app), credentials.path), snapshot => { if (snapshot.exists() && !snapshot.metadata.fromCache) apply(snapshot.data()); }, refresh);
-        } catch { refresh(); }
+            unsubscribe = firestore.onSnapshot(firestore.doc(firestore.getFirestore(app), credentials.path), snapshot => { if (snapshot.exists() && !snapshot.metadata.fromCache) apply(snapshot.data()); }, () => { status.textContent = s.board_conn_failed; });
+        } catch { status.textContent = s.board_conn_failed; }
     };
-    apply(config.initial); refresh(); connect(); setInterval(refresh, 10000); setInterval(connect, 45 * 60 * 1000);
+    apply(config.initial); connect(); setInterval(connect, 45 * 60 * 1000);
     window.addEventListener('online', () => { refresh(); connect(); });
     window.addEventListener('offline', () => { status.textContent = s.board_offline; });
 }

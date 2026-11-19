@@ -6,7 +6,7 @@ if (root) {
     const config = JSON.parse(document.getElementById('queue-config').textContent);
     const s = config.strings; // localised strings passed from Blade
     const csrf = document.querySelector('meta[name="csrf-token"]').content;
-    let version = Number(config.initial.version ?? 0), lastLive = 0;
+    let version = Number(config.initial.version ?? 0);
     let auth, firebaseApp, messagingModule, unsubscribe;
     let activeTicket = ['waiting', 'deferred', 'called', 'serving'].includes(config.initial.status);
     let notificationsSupported = false;
@@ -57,7 +57,7 @@ if (root) {
         } catch { connection(s.conn_refresh_failed); }
     };
     const connect = async () => {
-        if (!config.enabled) return;
+        if (!config.enabled) return connection(s.conn_live_disabled);
         try {
             const [{ initializeApp }, authModule, firestore] = await Promise.all([import('firebase/app'), import('firebase/auth'), import('firebase/firestore')]);
             firebaseApp ??= initializeApp(config.firebase);
@@ -68,9 +68,9 @@ if (root) {
             unsubscribe?.();
             unsubscribe = firestore.onSnapshot(firestore.doc(firestore.getFirestore(firebaseApp), credentials.path), { includeMetadataChanges: true }, snapshot => {
                 if (!snapshot.exists() || snapshot.metadata.fromCache) return;
-                if (!apply(snapshot.data())) { lastLive = 0; refresh(); return; }
-                lastLive = Date.now(); connection(s.conn_live);
-            }, () => { lastLive = 0; refresh(); });
+                if (!apply(snapshot.data())) return;
+                connection(s.conn_live);
+            }, () => connection(s.conn_live_failed));
         } catch { connection(s.conn_live_failed); }
     };
     const prepareNotifications = async () => {
@@ -139,8 +139,7 @@ if (root) {
         finally { updateNotificationButtons(); }
     });
     stopNotificationButton?.addEventListener('click', () => stopNotifications().catch(() => text('notification-message', s.notif_stop_error)));
-    apply(config.initial); connect(); refresh(); prepareNotifications();
-    setInterval(() => { if (Date.now() - lastLive > 60000) refresh(); }, 10000);
+    apply(config.initial); connect(); prepareNotifications();
     setInterval(connect, 45 * 60 * 1000);
     setInterval(syncNotifications, 30 * 60 * 1000);
     window.addEventListener('online', () => { refresh(); connect(); syncNotifications(); });
