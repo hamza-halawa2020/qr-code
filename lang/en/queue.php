@@ -3,8 +3,8 @@
 return [
 
     // ── Layout ───────────────────────────────────────────────────────────
-    'site_title'        => 'Dawrak | Queue System',
-    'brand_name'        => 'Dawrak',
+    'site_title'        => 'Bernasos | Queue System',
+    'brand_name'        => 'Bernasos',
     'brand_tagline'     => 'Clearer waiting. Easier service.',
     'header_label'      => 'Queue Management System',
     'footer_text'       => 'Your turn is saved. Track your number here and on the branch screens.',
@@ -186,7 +186,7 @@ return [
     'nav_reports'       => 'Reports',
     'nav_appointments'  => 'Appointments',
     'nav_services'      => 'Services',
-    'panel_brand'       => 'Dawrak | Queue Management',
+    'panel_brand'       => 'Bernasos | Queue Management',
     'saved'             => 'Saved',
 
     // ── Global services ────────────────────────────────────────────────────
