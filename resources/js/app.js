@@ -7,7 +7,7 @@ if (root) {
     const s = config.strings; // localised strings passed from Blade
     const csrf = document.querySelector('meta[name="csrf-token"]').content;
     let version = Number(config.initial.version ?? 0);
-    let auth, firebaseApp, messagingModule, unsubscribe, swRegistration;
+    let auth, firebaseApp, messagingModule, unsubscribe, swRegistration, connectInFlight;
     let activeTicket = ['waiting', 'deferred', 'called', 'serving'].includes(config.initial.status);
     let notificationsSupported = false;
     let notificationBusy = false, currentPushToken = null, removeForegroundListener;
@@ -82,30 +82,34 @@ if (root) {
     };
     const connect = async () => {
         if (!config.enabled) return connection(s.conn_live_disabled);
-        log('connect start', { authUrl: root.dataset.authUrl, projectId: config.firebase?.projectId });
-        try {
-            const [{ initializeApp }, authModule, firestore] = await Promise.all([import('firebase/app'), import('firebase/auth'), import('firebase/firestore')]);
-            firebaseApp ??= initializeApp(config.firebase);
-            auth ??= authModule.getAuth(firebaseApp);
-            await authModule.setPersistence(auth, authModule.inMemoryPersistence);
-            const credentials = await post(root.dataset.authUrl);
-            log('custom token received', { path: credentials.path, tokenLength: credentials.token?.length ?? 0 });
-            await authModule.signInWithCustomToken(auth, credentials.token);
-            log('custom token sign-in ok', { uid: auth.currentUser?.uid ?? '' });
-            unsubscribe?.();
-            unsubscribe = firestore.onSnapshot(firestore.doc(firestore.getFirestore(firebaseApp), credentials.path), { includeMetadataChanges: true }, snapshot => {
-                if (!snapshot.exists() || snapshot.metadata.fromCache) return;
-                if (!apply(snapshot.data())) return;
-                connection(s.conn_live);
-                log('firestore snapshot applied', { path: credentials.path, version: snapshot.data()?.version ?? '' });
-            }, error => {
+        if (connectInFlight) return connectInFlight;
+        connectInFlight = (async () => {
+            log('connect start', { authUrl: root.dataset.authUrl, projectId: config.firebase?.projectId });
+            try {
+                const [{ initializeApp }, authModule, firestore] = await Promise.all([import('firebase/app'), import('firebase/auth'), import('firebase/firestore')]);
+                firebaseApp ??= initializeApp(config.firebase);
+                auth ??= authModule.getAuth(firebaseApp);
+                await authModule.setPersistence(auth, authModule.inMemoryPersistence);
+                const credentials = await post(root.dataset.authUrl);
+                log('custom token received', { path: credentials.path, tokenLength: credentials.token?.length ?? 0 });
+                await authModule.signInWithCustomToken(auth, credentials.token);
+                log('custom token sign-in ok', { uid: auth.currentUser?.uid ?? '' });
+                unsubscribe?.();
+                unsubscribe = firestore.onSnapshot(firestore.doc(firestore.getFirestore(firebaseApp), credentials.path), { includeMetadataChanges: true }, snapshot => {
+                    if (!snapshot.exists() || snapshot.metadata.fromCache) return;
+                    if (!apply(snapshot.data())) return;
+                    connection(s.conn_live);
+                    log('firestore snapshot applied', { path: credentials.path, version: snapshot.data()?.version ?? '' });
+                }, error => {
+                    connection(s.conn_live_failed);
+                    report('firestore listener failed', error);
+                });
+            } catch (error) {
                 connection(s.conn_live_failed);
-                report('firestore listener failed', error);
-            });
-        } catch (error) {
-            connection(s.conn_live_failed);
-            report('connect failed', error);
-        }
+                report('connect failed', error);
+            }
+        })().finally(() => { connectInFlight = undefined; });
+        return connectInFlight;
     };
     const prepareNotifications = async () => {
         if (!notificationButton) return;
