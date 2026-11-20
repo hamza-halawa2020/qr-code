@@ -10,6 +10,7 @@ use App\Models\Counter;
 use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
@@ -219,41 +220,20 @@ class DemoSeeder extends Seeder
         ]);
 
         // ----------------------------------------------------------------
-        // Appointment slots  (3 future slots for today + tomorrow)
+        // Appointment slots — one shared slot per branch time (capacity 1)
         // ----------------------------------------------------------------
-        $slot1 = DB::table('appointment_slots')->insertGetId([
-            'branch_id'         => $branch->id,
-            'branch_service_id' => $svcAccounts->id,
-            'starts_at'         => now('Africa/Cairo')->setTime(10, 0)->addDay(),
-            'capacity'          => 3,
-            'created_at'        => now(),
-            'updated_at'        => now(),
+        $makeSlot = fn (string $time, bool $tomorrow = true) => DB::table('appointment_slots')->insertGetId([
+            'branch_id'  => $branch->id,
+            'starts_at'  => now('Africa/Cairo')->setTime(...array_map('intval', explode(':', $time)))->when($tomorrow, fn ($moment) => $moment->addDay()),
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
-        $slot2 = DB::table('appointment_slots')->insertGetId([
-            'branch_id'         => $branch->id,
-            'branch_service_id' => $svcAccounts->id,
-            'starts_at'         => now('Africa/Cairo')->setTime(11, 0)->addDay(),
-            'capacity'          => 3,
-            'created_at'        => now(),
-            'updated_at'        => now(),
-        ]);
-        $slot3 = DB::table('appointment_slots')->insertGetId([
-            'branch_id'         => $branch->id,
-            'branch_service_id' => $svcLoans->id,
-            'starts_at'         => now('Africa/Cairo')->setTime(14, 0)->addDay(),
-            'capacity'          => 2,
-            'created_at'        => now(),
-            'updated_at'        => now(),
-        ]);
+        $slot1 = $makeSlot('10:00');
+        $slot2 = $makeSlot('11:00');
+        $slot3 = $makeSlot('14:00');
+        $slot4 = $makeSlot('13:00');
         // A past slot (today morning) used for the checked-in appointment
-        $slotPast = DB::table('appointment_slots')->insertGetId([
-            'branch_id'         => $branch->id,
-            'branch_service_id' => $svcAccounts->id,
-            'starts_at'         => now('Africa/Cairo')->setTime(9, 0),
-            'capacity'          => 2,
-            'created_at'        => now(),
-            'updated_at'        => now(),
-        ]);
+        $slotPast = $makeSlot('09:00', false);
 
         // ----------------------------------------------------------------
         // Tickets — build today's queue across all lifecycle stages
@@ -458,11 +438,12 @@ class DemoSeeder extends Seeder
         $apptToken = Str::random(32);
         $apptId = DB::table('appointments')->insertGetId([
             'appointment_slot_id' => $slotPast,
+            'branch_service_id'   => $svcAccounts->id,
             'ticket_id'           => $tAppt->id,
             'token_hash'          => hash('sha256', $apptToken),
-            'customer_phone'      => encrypt('01099999999'),
-            'customer_name'       => encrypt('ميس الرومي'),
-            'customer_email'      => encrypt('mays@example.com'),
+            'customer_phone'      => Crypt::encryptString('01099999999'),
+            'customer_name'       => Crypt::encryptString('ميس الرومي'),
+            'customer_email'      => Crypt::encryptString('mays@example.com'),
             'status'              => 'checked_in',
             'created_at'          => now()->subHours(1),
             'updated_at'          => now()->subMinutes(30),
@@ -472,32 +453,35 @@ class DemoSeeder extends Seeder
         DB::table('appointments')->insert([
             [
                 'appointment_slot_id' => $slot1,
+                'branch_service_id'   => $svcAccounts->id,
                 'ticket_id'           => null,
                 'token_hash'          => hash('sha256', Str::random(32)),
-                'customer_phone'      => encrypt('01011110001'),
-                'customer_name'       => encrypt('رامي الشافعي'),
+                'customer_phone'      => Crypt::encryptString('01011110001'),
+                'customer_name'       => Crypt::encryptString('رامي الشافعي'),
                 'customer_email'      => null,
                 'status'              => 'booked',
                 'created_at'          => now()->subHours(2),
                 'updated_at'          => now()->subHours(2),
             ],
             [
-                'appointment_slot_id' => $slot1,
+                'appointment_slot_id' => $slot4,
+                'branch_service_id'   => $svcAccounts->id,
                 'ticket_id'           => null,
                 'token_hash'          => hash('sha256', Str::random(32)),
-                'customer_phone'      => encrypt('01011110002'),
-                'customer_name'       => encrypt('علياء منصور'),
-                'customer_email'      => encrypt('alya@example.com'),
+                'customer_phone'      => Crypt::encryptString('01011110002'),
+                'customer_name'       => Crypt::encryptString('علياء منصور'),
+                'customer_email'      => Crypt::encryptString('alya@example.com'),
                 'status'              => 'booked',
                 'created_at'          => now()->subHours(2),
                 'updated_at'          => now()->subHours(2),
             ],
             [
                 'appointment_slot_id' => $slot2,
+                'branch_service_id'   => $svcAccounts->id,
                 'ticket_id'           => null,
                 'token_hash'          => hash('sha256', Str::random(32)),
-                'customer_phone'      => encrypt('01011110003'),
-                'customer_name'       => encrypt('كريم سلطان'),
+                'customer_phone'      => Crypt::encryptString('01011110003'),
+                'customer_name'       => Crypt::encryptString('كريم سلطان'),
                 'customer_email'      => null,
                 'status'              => 'booked',
                 'created_at'          => now()->subHours(1),
@@ -505,11 +489,12 @@ class DemoSeeder extends Seeder
             ],
             [
                 'appointment_slot_id' => $slot3,
+                'branch_service_id'   => $svcLoans->id,
                 'ticket_id'           => null,
                 'token_hash'          => hash('sha256', Str::random(32)),
-                'customer_phone'      => encrypt('01011110004'),
-                'customer_name'       => encrypt('دلال عمر'),
-                'customer_email'      => encrypt('dalal@example.com'),
+                'customer_phone'      => Crypt::encryptString('01011110004'),
+                'customer_name'       => Crypt::encryptString('دلال عمر'),
+                'customer_email'      => Crypt::encryptString('dalal@example.com'),
                 'status'              => 'cancelled',
                 'created_at'          => now()->subHours(3),
                 'updated_at'          => now()->subMinutes(45),

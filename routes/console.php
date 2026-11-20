@@ -1,7 +1,6 @@
 <?php
 
 use App\Jobs\PublishBranch;
-use App\Jobs\RecordWorkerHeartbeat;
 use App\Models\Branch;
 use App\Models\OutboxMessage;
 use App\Services\CloseBusinessDay;
@@ -52,11 +51,6 @@ Artisan::command('queue:near-reminders', function () {
     }
 })->purpose('Enqueue one approaching-turn reminder for subscribed customers');
 
-Artisan::command('queue:advance-expired', function () {
-    $count = app(\App\Services\AutomaticQueueService::class)->sweep();
-    $this->info("Automatically advanced {$count} expired calls.");
-})->purpose('Recover automatic call timeouts even if a delayed job was missed');
-
 Artisan::command('queue:backup', function () {
     try {
         $backup = app(DatabaseBackupService::class)->create();
@@ -77,11 +71,6 @@ Artisan::command('queue:prune {--dry-run : Show eligible record counts without d
         $this->line($name.': '.$count);
     }
 })->purpose('Apply configured retention to ended tickets and old operational records');
-
-Artisan::command('queue:check-worker', function () {
-    RecordWorkerHeartbeat::dispatch();
-    $this->info('Worker heartbeat queued. Check System Status for its processing time.');
-})->purpose('Queue a harmless probe to verify worker processing');
 
 // Background scheduling is limited to the two tasks that keep Firestore live
 // and deliver FCM notifications. Everything above stays available on demand.

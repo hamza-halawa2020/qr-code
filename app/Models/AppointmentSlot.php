@@ -18,11 +18,6 @@ class AppointmentSlot extends Model
         return $this->belongsTo(Branch::class);
     }
 
-    public function service()
-    {
-        return $this->belongsTo(BranchService::class, 'branch_service_id');
-    }
-
     public function appointments()
     {
         return $this->hasMany(Appointment::class);

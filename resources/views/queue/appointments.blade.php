@@ -13,14 +13,6 @@
                     @endforeach
                 </select>
             </label>
-            <label>{{ __('queue.label_service') }}
-                <select name="service_id">
-                    <option value="">{{ __('queue.label_all_services') }}</option>
-                    @foreach($services as $service)
-                        <option value="{{ $service->id }}" @selected((string)$selectedService === (string)$service->id)>{{ $service->name }}</option>
-                    @endforeach
-                </select>
-            </label>
             <label>{{ __('queue.label_date') }}
                 <input name="date" type="date" value="{{ $date }}"
                        min="{{ now($branch->timezone)->toDateString() }}"
@@ -33,12 +25,22 @@
         <div>{{ __('queue.booking_details_title') }}</div>
         @if($errors->any())<p role="alert">{{ $errors->first() }}</p>@endif
         <form method="post" action="{{ route('appointments.book', $branch) }}" class="booking-form">@csrf
+            <input type="hidden" name="date" value="{{ $date }}">
+            <label>{{ __('queue.label_service') }}
+                <select name="service_id" required>
+                    <option value="">{{ __('queue.adm_appt_select_service') }}</option>
+                    @foreach($services as $service)
+                        <option value="{{ $service->id }}">{{ $service->name }}</option>
+                    @endforeach
+                </select>
+            </label>
             <label>{{ __('queue.label_slot') }}
-                <select name="slot_id" required>
+                <select name="time" required>
                     <option value="">{{ __('queue.select_slot') }}</option>
                     @foreach($appointmentSlots as $slot)
-                        <option value="{{ $slot->id }}" @disabled($slot->reserved >= $slot->capacity)>
-                            {{ __('queue.slot_option', ['time' => $slot->starts_at->timezone($branch->timezone)->format('H:i'), 'service' => $slot->service->name, 'available' => max(0, $slot->capacity - $slot->reserved)]) }}
+                        @php($localTime = $slot->starts_at->timezone($branch->timezone)->format('H:i'))
+                        <option value="{{ $localTime }}" @disabled($slot->available === 0)>
+                            {{ __('queue.slot_option_time', ['time' => $localTime, 'available' => $slot->available]) }}
                         </option>
                     @endforeach
                 </select>

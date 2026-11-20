@@ -3,7 +3,7 @@
     <div>{{ __('queue.appt_detail_heading') }}</div>
     <section class="panel">
         <div>{{ $appointment->slot->branch->name }}</div>
-        <p>{{ $appointment->slot->service->name }}</p>
+        <p>{{ $appointment->service->name }}</p>
         <p>{{ $appointment->slot->starts_at->timezone($appointment->slot->branch->timezone)->format('Y-m-d H:i') }}</p>
         @php
             $statusMap = [

@@ -20,6 +20,11 @@ class Appointment extends Model
         return $this->belongsTo(AppointmentSlot::class, 'appointment_slot_id');
     }
 
+    public function service()
+    {
+        return $this->belongsTo(BranchService::class, 'branch_service_id');
+    }
+
     public function ticket()
     {
         return $this->belongsTo(Ticket::class);

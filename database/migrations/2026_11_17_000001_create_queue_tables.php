@@ -16,6 +16,7 @@ return new class extends Migration
             $table->boolean('is_open')->default(true);
             $table->string('opens_at', 5)->default('09:00');
             $table->string('closes_at', 5)->default('17:00');
+            $table->unsignedSmallInteger('appointment_interval_minutes')->default(60);
             $table->unsignedInteger('no_show_after_seconds')->default(60);
             $table->unsignedBigInteger('version')->default(0);
             $table->boolean('automatic_queue')->default(false);

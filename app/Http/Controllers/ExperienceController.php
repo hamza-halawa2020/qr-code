@@ -34,12 +34,12 @@ class ExperienceController extends Controller
 
     public function appointments(Request $request, Branch $branch, AppointmentService $appointments)
     {
-        return view('queue.appointments', $appointments->slots($branch, $request->only(['date', 'service_id'])));
+        return view('queue.appointments', $appointments->slots($branch, $request->only(['date'])));
     }
 
     public function bookAppointment(Request $request, Branch $branch, AppointmentService $appointments)
     {
-        return redirect()->route('appointment.show', $appointments->book($branch, $request->session(), $request->only(['slot_id', 'customer_name', 'customer_phone', 'customer_email'])));
+        return redirect()->route('appointment.show', $appointments->book($branch, $request->session(), $request->only(['date', 'time', 'service_id', 'customer_name', 'customer_phone', 'customer_email'])));
     }
 
     public function appointment(string $secret, AppointmentService $appointments)

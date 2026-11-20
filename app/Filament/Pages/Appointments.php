@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\Branch;
 use App\Services\AppointmentService;
 use App\Services\BranchAccessService;
 use Filament\Notifications\Notification;
@@ -21,13 +22,7 @@ class Appointments extends Page
 
     public ?int $branchId = null;
 
-    public ?int $serviceId = null;
-
-    public string $date = '';
-
-    public string $time = '10:00';
-
-    public int $capacity = 1;
+    public int $appointmentInterval = 60;
 
     public static function canAccess(): bool
     {
@@ -36,18 +31,19 @@ class Appointments extends Page
 
     public function mount(): void
     {
-        $this->branchId = app(BranchAccessService::class)->branches(auth()->user())->first()?->id;
-        $this->date = now('Africa/Cairo')->addDay()->toDateString();
+        $branch = app(BranchAccessService::class)->branches(auth()->user())->first();
+        $this->branchId = $branch?->id;
+        $this->appointmentInterval = (int) ($branch?->appointment_interval_minutes ?: 60);
     }
 
     public function updatedBranchId(): void
     {
-        $this->serviceId = null;
+        $this->appointmentInterval = (int) (Branch::find($this->branchId)?->appointment_interval_minutes ?: 60);
     }
 
-    public function createSlot(): void
+    public function saveInterval(): void
     {
-        app(AppointmentService::class)->createSlot(auth()->user(), $this->branchId, $this->only(['serviceId', 'date', 'time', 'capacity']));
+        app(AppointmentService::class)->saveInterval(auth()->user(), $this->branchId, $this->appointmentInterval);
         Notification::make()->title(__('queue.saved'))->success()->send();
     }
 
