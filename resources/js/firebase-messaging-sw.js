@@ -11,6 +11,16 @@ self.addEventListener('notificationclick', event => {
         return ticket ? ticket.focus() : self.clients.openWindow('/');
     }));
 });
+// Diagnostic: lets us confirm a background push actually reached the worker
+// even when Firebase's own handler shows the notification silently.
+self.addEventListener('push', event => {
+    let kind = 'unknown';
+    try {
+        kind = event.data?.json()?.data?.kind ?? 'unknown';
+    } catch {}
+    event.waitUntil(fetch('/firebase-push-diag?kind=' + encodeURIComponent(kind)).catch(() => {}));
+});
+
 // Config is inlined at build time so the worker never depends on a separate
 // network request during install (a failed importScripts breaks push subscribe).
 self.firebaseConfig = __FIREBASE_WEB_CONFIG__;

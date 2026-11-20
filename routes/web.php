@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\QueueController;
 use App\Http\Controllers\ExperienceController;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [QueueController::class, 'home'])->name('home');
@@ -20,6 +21,14 @@ Route::get('/firebase-config.js', function () {
     return response('self.firebaseConfig = '.json_encode(config('firebase.web'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT).';')
         ->header('Content-Type', 'application/javascript')->header('Cache-Control', 'no-store');
 });
+Route::get('/firebase-push-diag', function () {
+    Log::warning('[sw][push] received', [
+        'kind' => request('kind'),
+        'at' => now()->toIso8601String(),
+    ]);
+
+    return response('ok', 204);
+})->middleware('throttle:queue-state');
 Route::get('/branches/{branch}/qr', [QueueController::class, 'qr'])->middleware('auth')->name('branch.qr');
 Route::get('/branches/{branch}', [QueueController::class, 'branch'])->name('branch.show');
 Route::post('/branches/{branch}/tickets', [QueueController::class, 'book'])->block(10, 10)->middleware('throttle:queue-booking')->name('branch.book');
