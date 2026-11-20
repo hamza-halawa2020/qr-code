@@ -11,7 +11,9 @@ self.addEventListener('notificationclick', event => {
         return ticket ? ticket.focus() : self.clients.openWindow('/');
     }));
 });
-importScripts('/firebase-config.js');
+// Config is inlined at build time so the worker never depends on a separate
+// network request during install (a failed importScripts breaks push subscribe).
+self.firebaseConfig = __FIREBASE_WEB_CONFIG__;
 if (self.firebaseConfig?.projectId) {
     const messaging = getMessaging(initializeApp(self.firebaseConfig));
     // Notification payloads are displayed by the FCM SDK. Do not show a second
