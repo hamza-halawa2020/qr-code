@@ -1,5 +1,5 @@
 <x-filament-panels::page>
-<div class="queue-grid" wire:poll.5s>
+<div class="queue-grid">
     @if($counter && $shift)
         <section class="queue-card"><div class="queue-row"><p>{{ __('queue.rec_active_shift', ['time' => $shift->started_at->timezone($counter->branch->timezone)->format('Y-m-d H:i')]) }}</p><x-filament::button color="gray" wire:click="act('end_shift')" wire:confirm="{{ __('queue.rec_end_shift_confirm') }}" wire:loading.attr="disabled" :disabled="(bool) $current">{{ __('queue.rec_end_shift') }}</x-filament::button></div></section>
     @endif

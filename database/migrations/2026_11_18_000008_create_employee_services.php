@@ -22,14 +22,10 @@ return new class extends Migration
                 DB::table('employee_services')->insert($rows);
             }
         });
-        Schema::table('tickets', function (Blueprint $table) {
-            $table->index(['branch_id', 'business_date', 'status', 'branch_service_id', 'number'], 'tickets_service_queue_index');
-        });
     }
 
     public function down(): void
     {
-        Schema::table('tickets', fn (Blueprint $table) => $table->dropIndex('tickets_service_queue_index'));
         Schema::dropIfExists('employee_services');
     }
 };

@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Enums\TicketStatus;
-use App\Jobs\HandleCallTimeout;
 use App\Jobs\PublishBranch;
 use App\Models\Branch;
 use App\Models\Counter;
@@ -60,9 +59,6 @@ class QueueService
             $retry = $ticket->retry_ready_at !== null;
             $ticket->update(['status' => TicketStatus::Called, 'counter_id' => $counter->id, 'user_id' => $user->id, 'called_at' => now(), 'call_expires_at' => now()->addSeconds($branch->no_show_after_seconds), 'retry_ready_at' => null, 'retry_attempts' => $ticket->retry_attempts + ($retry ? 1 : 0)]);
             $this->record($branch, $ticket, $retry ? 'retry_called' : 'called', TicketStatus::Waiting, $user);
-            if ($branch->automatic_queue) {
-                HandleCallTimeout::dispatch($ticket->id)->delay($ticket->call_expires_at)->afterCommit();
-            }
 
             return $ticket;
         }, 5);
@@ -123,9 +119,6 @@ class QueueService
                     $deferred->update(['status' => TicketStatus::Waiting, 'retry_ready_at' => now()]);
                     $this->record($branch, $deferred, 'retry_ready', TicketStatus::Deferred, $user);
                 }
-            }
-            if ($action === 'recall' && $branch->automatic_queue) {
-                HandleCallTimeout::dispatch($ticket->id)->delay($ticket->call_expires_at)->afterCommit();
             }
             if (in_array($action, ['complete', 'absent'], true) && $branch->automatic_queue && $branch->acceptsBookings()
                 && $counter && ! $counter->fresh()->is_paused) {

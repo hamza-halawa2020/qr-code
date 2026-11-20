@@ -8,15 +8,6 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('branches', fn (Blueprint $table) => $table->string('board_token_hash', 64)->nullable());
-        Schema::table('tickets', function (Blueprint $table) {
-            $table->timestamp('near_notified_at')->nullable();
-            $table->unsignedTinyInteger('rating')->nullable();
-            $table->string('rating_comment', 1000)->nullable();
-            $table->timestamp('rated_at')->nullable();
-            $table->timestamp('appointment_at')->nullable()->index();
-            $table->text('customer_name')->nullable();
-        });
         Schema::create('appointment_slots', function (Blueprint $table) {
             $table->id();
             $table->foreignId('branch_id')->constrained()->cascadeOnDelete();
@@ -43,7 +34,5 @@ return new class extends Migration
     {
         Schema::dropIfExists('appointments');
         Schema::dropIfExists('appointment_slots');
-        Schema::table('tickets', fn (Blueprint $table) => $table->dropColumn(['near_notified_at', 'rating', 'rating_comment', 'rated_at', 'appointment_at', 'customer_name']));
-        Schema::table('branches', fn (Blueprint $table) => $table->dropColumn('board_token_hash'));
     }
 };

@@ -20,7 +20,7 @@ php artisan migrate
 php artisan filament:assets
 npm.cmd install
 npm.cmd run build
-php -d auto_prepend_file= artisan serve --host=127.0.0.1 --port=8000
+php artisan serve --host=127.0.0.1 --port=8000
 ```
 
 شغّل العامل والجدولة في نافذتين منفصلتين: `php artisan queue:work` و`php artisan schedule:work`.

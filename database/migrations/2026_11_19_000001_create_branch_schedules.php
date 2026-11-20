@@ -30,8 +30,8 @@ return new class extends Migration
                 $rows[] = [
                     'branch_id'  => $branch->id,
                     'day_of_week' => $day,
-                    'opens_at'   => $branch->opens_at ?: '09:00',
-                    'closes_at'  => $branch->closes_at ?: '17:00',
+                    'opens_at'   => $branch->opens_at ?: '05:00',
+                    'closes_at'  => $branch->closes_at ?: '23:00',
                     'is_closed'  => false,
                     'created_at' => $now,
                     'updated_at' => $now,
