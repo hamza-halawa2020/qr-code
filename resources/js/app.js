@@ -21,14 +21,16 @@ if (root) {
     const connection = value => text('connection-status', value);
     const log = (...args) => console.log('[queue]', ...args);
     const logError = (label, error) => {
+        const rawMessage = String(error?.message ?? error);
         console.error('[queue] ' + label, {
-            message: error?.message ?? String(error),
+            message: rawMessage,
             name: error?.name ?? '',
             code: error?.code ?? '',
         });
-        const message = error?.message ?? '';
+        const isPushServiceError = String(error?.code) === '20' || /push service error/i.test(rawMessage);
+        const message = isPushServiceError && s.notif_push_service ? s.notif_push_service : rawMessage;
         if (message) text('notification-message', message);
-        return message;
+        return rawMessage;
     };
     const report = (label, error) => {
         logError(label, error);
