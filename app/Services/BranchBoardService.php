@@ -18,7 +18,7 @@ class BranchBoardService
         return DB::transaction(function () use ($branch) {
             $branch = Branch::whereKey($branch->id)->lockForUpdate()->firstOrFail();
             $secret = Str::random(64);
-            $branch->update(['board_token_hash' => hash('sha256', $secret)]);
+            $branch->update(['board_token_hash' => hash('sha256', $secret), 'board_token' => encrypt($secret)]);
             $branch->increment('version');
             OutboxMessage::create(['branch_id' => $branch->id, 'version' => $branch->version, 'type' => 'board_changed']);
             if (config('firebase.enabled')) {

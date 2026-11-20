@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\Setting;
 use App\Services\BranchAccessService;
 use App\Services\BranchBoardService;
 use App\Services\EmployeeServiceService;
@@ -89,6 +90,8 @@ class Operations extends Page
 
     public string $panelLocale = 'ar';
 
+    public string $pruneTime = '03:00';
+
     #[Locked]
     public ?string $displayUrl = null;
 
@@ -102,6 +105,7 @@ class Operations extends Page
 
     public function mount(): void
     {
+        $this->pruneTime = Setting::get('prune_time', '03:00') ?? '03:00';
         $this->weeklyHours = $this->defaultWeeklyHours();
         $this->selectedBranch = $this->branches()->first()?->id;
         $this->updatedSelectedBranch();
@@ -126,12 +130,13 @@ class Operations extends Page
             $this->displayLocale = $branch->display_locale ?? 'ar';
             $this->panelLocale = $branch->panel_locale ?? 'ar';
             $this->branchServiceIds = $branch->services()->where('is_active', true)->pluck('service_id')->all();
+            $this->boardUrl = $branch->boardUrl();
         } else {
             $this->branchServiceIds = [];
             $this->weeklyHours = $this->defaultWeeklyHours();
+            $this->boardUrl = null;
         }
         $this->displayUrl = null;
-        $this->boardUrl = null;
         $this->employeeId = null;
         $this->assignmentEmployeeId = null;
         $this->closeEmployee();
@@ -141,7 +146,7 @@ class Operations extends Page
 
     public function createBranch(): void
     {
-        $branch = $this->service()->createBranch(auth()->user(), $this->only(['branchName', 'opensAt', 'closesAt', 'weeklyHours']));
+        $branch = $this->guarded(fn () => $this->service()->createBranch(auth()->user(), $this->only(['branchName', 'opensAt', 'closesAt', 'weeklyHours'])));
         $this->selectedBranch = $branch->id;
         $this->branchName = '';
         $this->updatedSelectedBranch();
@@ -150,7 +155,7 @@ class Operations extends Page
 
     public function saveHours(): void
     {
-        $this->service()->saveWeeklyHours(auth()->user(), $this->selectedBranch, ['weeklyHours' => $this->weeklyHours]);
+        $this->guarded(fn () => $this->service()->saveWeeklyHours(auth()->user(), $this->selectedBranch, ['weeklyHours' => $this->weeklyHours]));
         $this->resetValidation(['weeklyHours']);
         $this->updatedSelectedBranch();
         $this->done();
@@ -169,9 +174,18 @@ class Operations extends Page
 
     public function saveAutomation(): void
     {
-        $this->service()->saveAutomation(auth()->user(), $this->selectedBranch, $this->only(['automaticQueue', 'noShowSeconds', 'missedTurnRetries', 'displayLocale', 'panelLocale']));
+        $this->guarded(fn () => $this->service()->saveAutomation(auth()->user(), $this->selectedBranch, $this->only(['automaticQueue', 'noShowSeconds', 'missedTurnRetries', 'displayLocale', 'panelLocale'])));
         $this->resetValidation(['automaticQueue', 'noShowSeconds', 'missedTurnRetries', 'displayLocale', 'panelLocale']);
         $this->done();
+    }
+
+    public function savePruneTime(): void
+    {
+        abort_unless(auth()->user()?->role === 'admin', 403);
+        $this->validate(['pruneTime' => ['required', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/']]);
+        Setting::set('prune_time', $this->pruneTime);
+        $this->resetValidation(['pruneTime']);
+        Notification::make()->title(__('queue.ops_prune_time_saved'))->success()->send();
     }
 
     public function toggleBooking(): void
@@ -194,7 +208,7 @@ class Operations extends Page
 
     public function createEmployee(): void
     {
-        $this->service()->createEmployee(auth()->user(), $this->selectedBranch, $this->only(['employeeName', 'employeeEmail', 'employeePassword', 'employeeRole']));
+        $this->guarded(fn () => $this->service()->createEmployee(auth()->user(), $this->selectedBranch, $this->only(['employeeName', 'employeeEmail', 'employeePassword', 'employeeRole'])));
         $this->reset('employeeName', 'employeeEmail', 'employeePassword');
         $this->done();
     }
@@ -228,7 +242,7 @@ class Operations extends Page
 
     public function createCounter(): void
     {
-        $this->displayUrl = $this->service()->createCounter(auth()->user(), $this->selectedBranch, $this->only(['counterName', 'counterNumber', 'employeeId']));
+        $this->displayUrl = $this->guarded(fn () => $this->service()->createCounter(auth()->user(), $this->selectedBranch, $this->only(['counterName', 'counterNumber', 'employeeId'])));
         $this->reset('counterName', 'employeeId');
         $this->done();
     }
@@ -248,7 +262,7 @@ class Operations extends Page
     public function saveEmployee(): void
     {
         abort_unless($this->editingEmployeeId, 422);
-        $this->service()->updateEmployee(auth()->user(), $this->selectedBranch, $this->editingEmployeeId, $this->only(['editEmployeeName', 'editEmployeeEmail', 'editEmployeeRole', 'editEmployeeActive', 'editEmployeePassword']));
+        $this->guarded(fn () => $this->service()->updateEmployee(auth()->user(), $this->selectedBranch, $this->editingEmployeeId, $this->only(['editEmployeeName', 'editEmployeeEmail', 'editEmployeeRole', 'editEmployeeActive', 'editEmployeePassword'])));
         $this->closeEmployee();
         $this->done();
     }
@@ -280,14 +294,15 @@ class Operations extends Page
     public function saveCounter(): void
     {
         abort_unless($this->editingCounterId, 422);
-        $this->service()->updateCounter(auth()->user(), $this->selectedBranch, $this->editingCounterId, $this->only(['editCounterName', 'editCounterNumber']));
+        $this->guarded(fn () => $this->service()->updateCounter(auth()->user(), $this->selectedBranch, $this->editingCounterId, $this->only(['editCounterName', 'editCounterNumber'])));
         $this->closeCounter();
         $this->done();
     }
 
     public function assignEmployee(int $counterId): void
     {
-        $this->service()->assignEmployee(auth()->user(), $this->selectedBranch, $counterId, $this->assignmentEmployeeId);
+        $this->guarded(fn () => $this->service()->assignEmployee(auth()->user(), $this->selectedBranch, $counterId, $this->assignmentEmployeeId));
+
         $this->assignmentEmployeeId = null;
         $this->done();
     }
@@ -319,6 +334,20 @@ class Operations extends Page
     private function service(): OperationsService
     {
         return app(OperationsService::class);
+    }
+
+    /** Show validation failures in the same centered alert area as success messages. */
+    private function guarded(callable $callback): mixed
+    {
+        try {
+            return $callback();
+        } catch (ValidationException $exception) {
+            $message = collect($exception->errors())->flatten()->first() ?? __('queue.ops_action_failed');
+
+            Notification::make()->title($message)->danger()->send();
+
+            throw $exception;
+        }
     }
 
     private function done(): void

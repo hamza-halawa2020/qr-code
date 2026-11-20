@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Services;
 use App\Filament\Resources\Services\Pages\ManageServices;
 use App\Models\Service;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\TextInput;
@@ -13,6 +14,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\DB;
 
 class ServiceResource extends Resource
 {
@@ -47,6 +49,7 @@ class ServiceResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->description(__('queue.svc_delete_hint'))
             ->columns([
                 TextColumn::make('name')->label(__('queue.svc_name'))->searchable()->sortable(),
                 TextColumn::make('branch_services_count')->label(__('queue.svc_branches_count'))->counts('branchServices')->badge(),
@@ -54,7 +57,20 @@ class ServiceResource extends Resource
             ])
             ->recordActions([
                 EditAction::make(),
-                DeleteAction::make()->visible(fn (Service $record) => $record->branchServices()->doesntExist()),
+                DeleteAction::make()
+                    ->modal(false)
+                    ->requiresConfirmation(false)
+                    ->visible(fn (Service $record) => $record->branchServices()->where('is_active', true)->doesntExist())
+                    ->action(function (Action $action): void {
+                        $record = $action->getRecord();
+                        abort_unless($record instanceof Service, 404);
+                        abort_if($record->branchServices()->where('is_active', true)->exists(), 422);
+                        DB::transaction(function () use ($record) {
+                            $record->branchServices()->delete();
+                            $record->delete();
+                        });
+                        $action->success();
+                    }),
             ]);
     }
 

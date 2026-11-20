@@ -24,7 +24,17 @@ class OperationsService
         $branches = $this->access->branches($user);
         $branch = $branches->firstWhere('id', $branchId);
 
-        return ['branches' => $branches, 'branch' => $branch, 'allServices' => Service::orderBy('name')->get(), 'counters' => $branch?->counters()->with('user')->orderBy('number')->get() ?? collect(), 'employees' => User::with('services')->where('branch_id', $branch?->id ?? 0)->get(), 'counterSessions' => CounterSession::with(['counter', 'user'])->where('branch_id', $branch?->id ?? 0)->orderByDesc('id')->limit(20)->get()];
+        $assignedIds = Counter::where('branch_id', $branch?->id ?? 0)->whereNotNull('user_id')->pluck('user_id')->all();
+
+        return [
+            'branches' => $branches,
+            'branch' => $branch, 
+            'allServices' => Service::orderBy('name')->get(), 
+            'counters' => $branch?->counters()->with('user')->orderBy('number')->get() ?? collect(), 
+            'employees' => User::with('services')->where('branch_id', $branch?->id ?? 0)->get(), 
+            'assignableEmployees' => User::where('branch_id', $branch?->id ?? 0)->where('is_active', true)->whereNotIn('id', $assignedIds)->orderBy('name')->get(), 
+            'counterSessions' => CounterSession::with(['counter', 'user'])->where('branch_id', $branch?->id ?? 0)->orderByDesc('id')->limit(20)->get()
+        ];
     }
 
     public function createBranch(User $user, array $input): Branch
@@ -165,9 +175,9 @@ class OperationsService
             'counterName' => 'required|string|max:120',
             'counterNumber' => ['required', 'integer', 'min:1', Rule::unique('counters', 'number')->where('branch_id', $branch->id)],
             'employeeId' => ['nullable', 'integer', Rule::exists('users', 'id')->where('branch_id', $branch->id)->where('is_active', true), Rule::unique('counters', 'user_id')],
-        ])->validate();
+        ], ['counterNumber.unique' => __('queue.ops_counter_number_taken'), 'employeeId.unique' => __('queue.ops_assign_taken')])->validate();
         $secret = Str::random(64);
-        $counter = Counter::create(['branch_id' => $branch->id, 'name' => $data['counterName'], 'number' => $data['counterNumber'], 'user_id' => $data['employeeId'] ?? null, 'display_token_hash' => hash('sha256', $secret)]);
+        $counter = Counter::create(['branch_id' => $branch->id, 'name' => $data['counterName'], 'number' => $data['counterNumber'], 'user_id' => $data['employeeId'] ?? null, 'display_token_hash' => hash('sha256', $secret), 'display_token' => encrypt($secret)]);
 
         return route('display.show', [$counter, $secret]);
     }
@@ -177,7 +187,7 @@ class OperationsService
         $branch = $this->access->authorizedBranch($user, $branchId);
         $counter = Counter::where('branch_id', $branch->id)->findOrFail($counterId);
         $secret = Str::random(64);
-        $counter->update(['display_token_hash' => hash('sha256', $secret)]);
+        $counter->update(['display_token_hash' => hash('sha256', $secret), 'display_token' => encrypt($secret)]);
 
         return route('display.show', [$counter, $secret]);
     }
@@ -196,7 +206,7 @@ class OperationsService
         DB::transaction(function () use ($branch, $counterId, $input) {
             Branch::whereKey($branch->id)->lockForUpdate()->firstOrFail();
             $counter = Counter::where('branch_id', $branch->id)->lockForUpdate()->findOrFail($counterId);
-            $data = Validator::make($input, ['editCounterName' => 'required|string|max:120', 'editCounterNumber' => ['required', 'integer', 'min:1', Rule::unique('counters', 'number')->where('branch_id', $branch->id)->ignore($counter->id)]])->validate();
+            $data = Validator::make($input, ['editCounterName' => 'required|string|max:120', 'editCounterNumber' => ['required', 'integer', 'min:1', Rule::unique('counters', 'number')->where('branch_id', $branch->id)->ignore($counter->id)]], ['editCounterNumber.unique' => __('queue.ops_counter_number_taken')])->validate();
             if ($counter->currentTicket()) {
                 throw ValidationException::withMessages(['editCounterName' => 'أنهِ التذكرة الحالية قبل تعديل بيانات الشباك.']);
             }
@@ -212,7 +222,11 @@ class OperationsService
     public function assignEmployee(User $user, ?int $branchId, int $counterId, ?int $employeeId): void
     {
         $branch = $this->access->authorizedBranch($user, $branchId);
-        Validator::make(['assignmentEmployeeId' => $employeeId], ['assignmentEmployeeId' => ['nullable', 'integer', Rule::exists('users', 'id')->where('branch_id', $branch->id)->where('is_active', true), Rule::unique('counters', 'user_id')->ignore($counterId)]])->validate();
+        Validator::make(
+            ['assignmentEmployeeId' => $employeeId],
+            ['assignmentEmployeeId' => ['nullable', 'integer', Rule::exists('users', 'id')->where('branch_id', $branch->id)->where('is_active', true), Rule::unique('counters', 'user_id')->ignore($counterId)]],
+            ['assignmentEmployeeId.unique' => __('queue.ops_assign_taken'), 'assignmentEmployeeId.exists' => __('queue.ops_assign_invalid')]
+        )->validate();
         DB::transaction(function () use ($branch, $counterId, $employeeId) {
             Branch::whereKey($branch->id)->lockForUpdate()->firstOrFail();
             $counter = Counter::where('branch_id', $branch->id)->lockForUpdate()->findOrFail($counterId);

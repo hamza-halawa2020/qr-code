@@ -6,11 +6,12 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
+use Throwable;
 
 class Branch extends Model
 {
     protected $guarded = [];
-    protected $hidden = ['board_token_hash'];
+    protected $hidden = ['board_token_hash', 'board_token'];
 
     /** Match the database defaults so freshly created models also have valid hours. */
     protected $attributes = [
@@ -94,6 +95,20 @@ class Branch extends Model
     public function acceptsBookings(): bool
     {
         return $this->acceptsBookingsAt(now());
+    }
+
+    /** The saved public board link for this branch, if it has been generated. */
+    public function boardUrl(): ?string
+    {
+        if (! $this->board_token) {
+            return null;
+        }
+
+        try {
+            return route('board.show', [$this, decrypt($this->board_token)]);
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     private function branchMoment(Carbon|string|null $date): Carbon

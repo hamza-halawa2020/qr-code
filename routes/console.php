@@ -3,9 +3,9 @@
 use App\Jobs\PublishBranch;
 use App\Models\Branch;
 use App\Models\OutboxMessage;
+use App\Models\Setting;
 use App\Services\CloseBusinessDay;
 use App\Services\CustomerExperienceService;
-use App\Services\DatabaseBackupService;
 use App\Services\QueueRetentionService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -51,19 +51,6 @@ Artisan::command('queue:near-reminders', function () {
     }
 })->purpose('Enqueue one approaching-turn reminder for subscribed customers');
 
-Artisan::command('queue:backup', function () {
-    try {
-        $backup = app(DatabaseBackupService::class)->create();
-        $this->info('Private backup created: '.$backup['path'].' ('.$backup['bytes'].' bytes)');
-
-        return 0;
-    } catch (RuntimeException $exception) {
-        $this->error($exception->getMessage());
-
-        return 1;
-    }
-})->purpose('Create a private consistent database backup');
-
 Artisan::command('queue:prune {--dry-run : Show eligible record counts without deleting}', function () {
     $counts = app(QueueRetentionService::class)->prune((bool) $this->option('dry-run'));
     $this->info($this->option('dry-run') ? 'Dry run: no records were deleted.' : 'Retention cleanup completed.');
@@ -72,7 +59,22 @@ Artisan::command('queue:prune {--dry-run : Show eligible record counts without d
     }
 })->purpose('Apply configured retention to ended tickets and old operational records');
 
-// Background scheduling is limited to the two tasks that keep Firestore live
-// and deliver FCM notifications. Everything above stays available on demand.
+// Background Scheduling:
+// 1. Live Sync & Realtime Notifications: run every minute.
 Schedule::command('queue:publish-pending')->everyMinute()->withoutOverlapping();
 Schedule::command('queue:near-reminders')->everyMinute()->withoutOverlapping();
+
+// 2. Operational maintenance:
+Schedule::command('appointments:expire')->everyTenMinutes()->withoutOverlapping();
+Schedule::command('queue:close-day')->everyFifteenMinutes()->withoutOverlapping();
+
+$pruneTime = '03:00';
+try {
+    $configured = Setting::get('prune_time');
+    if ($configured && preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $configured)) {
+        $pruneTime = $configured;
+    }
+} catch (\Throwable) {
+    $pruneTime = '03:00';
+}
+Schedule::command('queue:prune')->dailyAt($pruneTime)->timezone('Africa/Cairo')->withoutOverlapping();

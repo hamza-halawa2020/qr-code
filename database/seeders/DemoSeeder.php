@@ -42,8 +42,8 @@ class DemoSeeder extends Seeder
             'name'                  => 'الفرع الرئيسي',
             'timezone'              => 'Africa/Cairo',
             'is_open'               => true,
-            'opens_at'              => '08:00',
-            'closes_at'             => '17:00',
+            'opens_at'              => '01:00',
+            'closes_at'             => '23:59',
             'no_show_after_seconds' => 120,
             'automatic_queue'       => false,
             'missed_turn_retries'   => 2,
@@ -52,13 +52,13 @@ class DemoSeeder extends Seeder
 
         // A varied weekly schedule so the customer-facing hours are easy to see.
         $weeklyHours = [
-            0 => ['is_closed' => true,  'opens_at' => null,    'closes_at' => null],   // Sunday
-            1 => ['is_closed' => false, 'opens_at' => '08:00', 'closes_at' => '17:00'],
-            2 => ['is_closed' => false, 'opens_at' => '08:00', 'closes_at' => '17:00'],
-            3 => ['is_closed' => false, 'opens_at' => '08:00', 'closes_at' => '17:00'],
-            4 => ['is_closed' => false, 'opens_at' => '08:00', 'closes_at' => '17:00'],
-            5 => ['is_closed' => false, 'opens_at' => '09:00', 'closes_at' => '15:00'], // Friday
-            6 => ['is_closed' => false, 'opens_at' => '10:00', 'closes_at' => '16:00'], // Saturday
+            0 => ['is_closed' => false, 'opens_at' => '01:00', 'closes_at' => '23:59'], // Sunday
+            1 => ['is_closed' => false, 'opens_at' => '01:00', 'closes_at' => '23:59'], // Monday
+            2 => ['is_closed' => false, 'opens_at' => '01:00', 'closes_at' => '23:59'], // Tuesday
+            3 => ['is_closed' => false, 'opens_at' => '01:00', 'closes_at' => '23:59'], // Wednesday
+            4 => ['is_closed' => false, 'opens_at' => '01:00', 'closes_at' => '23:59'], // Thursday
+            5 => ['is_closed' => false, 'opens_at' => '01:00', 'closes_at' => '23:59'], // Friday
+            6 => ['is_closed' => false, 'opens_at' => '01:00', 'closes_at' => '23:59'], // Saturday
         ];
         foreach ($weeklyHours as $day => $row) {
             BranchSchedule::create(['branch_id' => $branch->id, 'day_of_week' => $day] + $row);
