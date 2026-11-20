@@ -156,6 +156,7 @@ return [
         'notif_insecure'          => 'Notifications are not available on this connection or browser. Follow this page and branch screens.',
         'notif_unsupported'       => 'Notifications not supported here. On iPhone, try adding this site to your home screen.',
         'notif_prepare_failed'    => 'Could not set up notifications. Follow this page and branch screens.',
+        'notif_push_service'      => 'The browser refused the push subscription. Try a new Chrome profile or Firefox/Edge, or remove this site from browser notification settings.',
         'notif_enabled'           => 'Notifications enabled on this device. Also watch branch screens.',
         'notif_near'              => 'Your turn is coming up — stay close and watch this page.',
         'notif_called'            => 'Your number has been called. Check the counter shown.',
