@@ -111,30 +111,55 @@ class OperationsService
     {
         $employee = $this->employee($user, $branchId, $employeeId);
 
-        return ['editEmployeeName' => $employee->name, 'editEmployeeEmail' => $employee->email, 'editEmployeeRole' => $employee->role, 'editEmployeeActive' => $employee->is_active, 'editEmployeePassword' => ''];
+        return ['editEmployeeName' => $employee->name, 'editEmployeeEmail' => $employee->email, 'editEmployeeRole' => $employee->role, 'editEmployeeBranchId' => $employee->branch_id, 'editEmployeeActive' => $employee->is_active, 'editEmployeePassword' => ''];
     }
 
     public function updateEmployee(User $user, ?int $branchId, int $employeeId, array $input): void
     {
         $branch = $this->access->authorizedBranch($user, $branchId);
         DB::transaction(function () use ($user, $branch, $employeeId, $input) {
-            Branch::whereKey($branch->id)->lockForUpdate()->firstOrFail();
             $employee = $this->employee($user, $branch->id, $employeeId);
             $data = Validator::make($input, [
                 'editEmployeeName' => 'required|string|max:120',
                 'editEmployeeEmail' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($employee->id)],
                 'editEmployeeRole' => ['required', Rule::in($user->role === 'admin' ? ['agent', 'manager', 'admin'] : ['agent'])],
+                'editEmployeeBranchId' => ['required', 'integer', Rule::exists('branches', 'id')],
                 'editEmployeeActive' => 'required|boolean',
                 'editEmployeePassword' => 'nullable|string|min:12|max:128',
-            ])->validate();
-            if ($employee->id === $user->id && (! $data['editEmployeeActive'] || $data['editEmployeeRole'] !== $employee->role)) {
-                throw ValidationException::withMessages(['editEmployeeActive' => 'لا يمكنك تعطيل حسابك أو تغيير صلاحياته بنفسك.']);
+            ], ['editEmployeeBranchId.exists' => __('queue.ops_transfer_branch_invalid')])->validate();
+
+            // Managers can only edit employees in their own branch, even if the
+            // branch selector is tampered with in the browser.
+            $targetBranchId = $user->role === 'admin' ? (int) $data['editEmployeeBranchId'] : $employee->branch_id;
+            $transferring = $targetBranchId !== $employee->branch_id;
+
+            if ($employee->id === $user->id && ($transferring || ! $data['editEmployeeActive'] || $data['editEmployeeRole'] !== $employee->role)) {
+                throw ValidationException::withMessages(['editEmployeeBranchId' => __('queue.ops_transfer_self')]);
             }
-            $changesAccess = ! $data['editEmployeeActive'] || $data['editEmployeeRole'] !== $employee->role || filled($data['editEmployeePassword'] ?? null);
-            if ($changesAccess && Counter::where('user_id', $employee->id)->whereHas('tickets', fn ($query) => $query->whereIn('status', ['called', 'serving']))->exists()) {
-                throw ValidationException::withMessages(['editEmployeeActive' => 'أنهِ التذكرة الحالية قبل تغيير وصول الموظف أو كلمة مروره.']);
+
+            $changesAccess = $transferring || ! $data['editEmployeeActive'] || $data['editEmployeeRole'] !== $employee->role || filled($data['editEmployeePassword'] ?? null);
+            $hasCurrentTicket = Counter::where('user_id', $employee->id)->whereHas('tickets', fn ($query) => $query->whereIn('status', ['called', 'serving']))->exists();
+            if ($changesAccess && $hasCurrentTicket) {
+                $field = $transferring ? 'editEmployeeBranchId' : 'editEmployeeActive';
+                $message = $transferring ? __('queue.ops_transfer_active_ticket') : 'أنهِ التذكرة الحالية قبل تغيير وصول الموظف أو كلمة مروره.';
+                throw ValidationException::withMessages([$field => $message]);
             }
-            $values = ['name' => $data['editEmployeeName'], 'email' => $data['editEmployeeEmail'], 'role' => $data['editEmployeeRole'], 'is_active' => $data['editEmployeeActive']];
+
+            // Lock both branches in a stable order to keep concurrent edits safe.
+            $branchIds = array_values(array_unique([$branch->id, $targetBranchId]));
+            sort($branchIds);
+            $locked = Branch::whereIn('id', $branchIds)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+            $oldBranch = $locked->get($branch->id);
+            $targetBranch = $locked->get($targetBranchId);
+            abort_unless($oldBranch && $targetBranch, 422);
+
+            $values = [
+                'name' => $data['editEmployeeName'],
+                'email' => $data['editEmployeeEmail'],
+                'role' => $data['editEmployeeRole'],
+                'branch_id' => $targetBranchId,
+                'is_active' => $data['editEmployeeActive'],
+            ];
             if (filled($data['editEmployeePassword'] ?? null)) {
                 $values['password'] = $data['editEmployeePassword'];
             }
@@ -144,16 +169,46 @@ class OperationsService
             // Explicit assignment includes remember_token, which is intentionally
             // not available to mass-assigned forms.
             $employee->forceFill($values)->save();
+
+            $counters = Counter::where('user_id', $employee->id)->get();
+            if ($transferring) {
+                foreach ($counters as $counter) {
+                    app(CounterSessionService::class)->closeForCounter($counter, 'employee_transferred');
+                    $counter->update(['user_id' => null, 'is_paused' => true]);
+                }
+
+                // Keep only services that also exist (and are active) in the new branch.
+                $globalServiceIds = DB::table('employee_services')
+                    ->join('branch_services', 'branch_services.id', '=', 'employee_services.branch_service_id')
+                    ->where('employee_services.user_id', $employee->id)
+                    ->pluck('branch_services.service_id')
+                    ->unique();
+                $newLinks = DB::table('branch_services')
+                    ->where('branch_id', $targetBranchId)
+                    ->where('is_active', true)
+                    ->whereIn('service_id', $globalServiceIds)
+                    ->pluck('id');
+                $employee->services()->sync($newLinks);
+
+                if ($counters->isNotEmpty()) {
+                    $oldBranch->increment('version');
+                    OutboxMessage::create(['branch_id' => $oldBranch->id, 'version' => $oldBranch->version, 'type' => 'counter_changed']);
+                    if (config('firebase.enabled')) {
+                        PublishBranch::dispatch($oldBranch->id)->afterCommit();
+                    }
+                }
+            }
+
             if (! $employee->is_active) {
-                foreach (Counter::where('user_id', $employee->id)->get() as $counter) {
+                foreach ($counters as $counter) {
                     app(CounterSessionService::class)->closeForCounter($counter, 'account_disabled');
                 }
             }
             if (! $employee->is_active && Counter::where('user_id', $employee->id)->where('is_paused', false)->update(['is_paused' => true])) {
-                $branch->refresh()->increment('version');
-                OutboxMessage::create(['branch_id' => $branch->id, 'version' => $branch->version, 'type' => 'counter_changed']);
+                $oldBranch->increment('version');
+                OutboxMessage::create(['branch_id' => $oldBranch->id, 'version' => $oldBranch->version, 'type' => 'counter_changed']);
                 if (config('firebase.enabled')) {
-                    PublishBranch::dispatch($branch->id)->afterCommit();
+                    PublishBranch::dispatch($oldBranch->id)->afterCommit();
                 }
             }
         });

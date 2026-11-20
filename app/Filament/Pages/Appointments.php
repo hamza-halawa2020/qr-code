@@ -7,6 +7,7 @@ use App\Services\AppointmentService;
 use App\Services\BranchAccessService;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Illuminate\Validation\ValidationException;
 
 class Appointments extends Page
 {
@@ -43,7 +44,13 @@ class Appointments extends Page
 
     public function saveInterval(): void
     {
-        app(AppointmentService::class)->saveInterval(auth()->user(), $this->branchId, $this->appointmentInterval);
+        try {
+            app(AppointmentService::class)->saveInterval(auth()->user(), $this->branchId, $this->appointmentInterval);
+        } catch (ValidationException $exception) {
+            Notification::make()->title(collect($exception->errors())->flatten()->first())->danger()->send();
+
+            throw $exception;
+        }
         Notification::make()->title(__('queue.saved'))->success()->send();
     }
 

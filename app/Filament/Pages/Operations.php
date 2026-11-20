@@ -61,6 +61,8 @@ class Operations extends Page
 
     public string $editEmployeeRole = 'agent';
 
+    public ?int $editEmployeeBranchId = null;
+
     public bool $editEmployeeActive = true;
 
     public string $editEmployeePassword = '';
@@ -256,13 +258,13 @@ class Operations extends Page
     public function closeEmployee(): void
     {
         $this->editingEmployeeId = null;
-        $this->reset('editEmployeeName', 'editEmployeeEmail', 'editEmployeeRole', 'editEmployeeActive', 'editEmployeePassword');
+        $this->reset('editEmployeeName', 'editEmployeeEmail', 'editEmployeeRole', 'editEmployeeBranchId', 'editEmployeeActive', 'editEmployeePassword');
     }
 
     public function saveEmployee(): void
     {
         abort_unless($this->editingEmployeeId, 422);
-        $this->guarded(fn () => $this->service()->updateEmployee(auth()->user(), $this->selectedBranch, $this->editingEmployeeId, $this->only(['editEmployeeName', 'editEmployeeEmail', 'editEmployeeRole', 'editEmployeeActive', 'editEmployeePassword'])));
+        $this->guarded(fn () => $this->service()->updateEmployee(auth()->user(), $this->selectedBranch, $this->editingEmployeeId, $this->only(['editEmployeeName', 'editEmployeeEmail', 'editEmployeeRole', 'editEmployeeBranchId', 'editEmployeeActive', 'editEmployeePassword'])));
         $this->closeEmployee();
         $this->done();
     }
