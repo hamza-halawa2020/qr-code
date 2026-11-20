@@ -99,9 +99,16 @@ class FirebaseGateway
 
     private function account(): array
     {
-        $path = config('firebase.credentials');
-        if (! config('firebase.enabled') || ! is_file($path)) {
-            throw new RuntimeException('Firebase is not configured.');
+        if (! config('firebase.enabled')) {
+            throw new RuntimeException('Firebase is disabled. Set FIREBASE_ENABLED=true in .env.');
+        }
+
+        $path = (string) config('firebase.credentials');
+        if (! str_starts_with($path, '/') && ! preg_match('/^[A-Za-z]:[\\\\\/]/', $path)) {
+            $path = base_path($path);
+        }
+        if (! is_file($path) || ! is_readable($path)) {
+            throw new RuntimeException('Firebase service account file is missing or unreadable: '.$path);
         }
 
         return json_decode(file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);

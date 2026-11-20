@@ -1,8 +1,17 @@
 <?php
 
+$credentials = env('FIREBASE_CREDENTIALS');
+
+if (! $credentials) {
+    $credentials = storage_path('app/private/firebase-service-account.json');
+} elseif (! str_starts_with($credentials, '/') && ! preg_match('/^[A-Za-z]:[\\\\\/]/', $credentials)) {
+    // Relative paths work from the project root in CLI, but not under PHP-FPM.
+    $credentials = base_path($credentials);
+}
+
 return [
     'enabled' => (bool) env('FIREBASE_ENABLED', false),
-    'credentials' => env('FIREBASE_CREDENTIALS', storage_path('app/private/firebase-service-account.json')),
+    'credentials' => $credentials,
     'project_id' => env('FIREBASE_PROJECT_ID'),
     'web' => [
         'apiKey' => env('FIREBASE_API_KEY'),
