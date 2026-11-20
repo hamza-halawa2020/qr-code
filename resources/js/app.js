@@ -7,7 +7,7 @@ if (root) {
     const s = config.strings; // localised strings passed from Blade
     const csrf = document.querySelector('meta[name="csrf-token"]').content;
     let version = Number(config.initial.version ?? 0);
-    let auth, firebaseApp, messagingModule, unsubscribe;
+    let auth, firebaseApp, messagingModule, unsubscribe, swRegistration;
     let activeTicket = ['waiting', 'deferred', 'called', 'serving'].includes(config.initial.status);
     let notificationsSupported = false;
     let notificationBusy = false, currentPushToken = null, removeForegroundListener;
@@ -138,12 +138,28 @@ if (root) {
         notificationBusy = true; updateNotificationButtons();
         try {
             if (!firebaseApp) await connect();
-            const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+            swRegistration ??= await navigator.serviceWorker.register('/firebase-messaging-sw.js');
             await navigator.serviceWorker.ready;
-            log('service worker registered', { scope: registration.scope, active: !!navigator.serviceWorker.controller });
+            const registration = swRegistration;
+            const existing = await registration.pushManager.getSubscription();
+            log('service worker ready', {
+                scope: registration.scope,
+                active: !!navigator.serviceWorker.controller,
+                existingPushSubscription: !!existing,
+            });
             const messaging = messagingModule.getMessaging(firebaseApp);
             log('requesting FCM token', { vapidLength: (config.vapidKey ?? '').length, senderId: config.firebase?.messagingSenderId ?? '' });
-            const token = await messagingModule.getToken(messaging, { vapidKey: config.vapidKey, serviceWorkerRegistration: registration });
+            let token;
+            try {
+                token = await messagingModule.getToken(messaging, { vapidKey: config.vapidKey, serviceWorkerRegistration: registration });
+            } catch (tokenError) {
+                // Chrome can keep a stale push subscription that makes new
+                // subscribe() calls fail with "Registration failed - push service error".
+                if (!existing) throw tokenError;
+                await existing.unsubscribe();
+                log('stale browser push subscription removed, retrying');
+                token = await messagingModule.getToken(messaging, { vapidKey: config.vapidKey, serviceWorkerRegistration: registration });
+            }
             log('FCM token received', { tokenLength: token?.length ?? 0 });
             await post(root.dataset.subscribeUrl, { token });
             log('subscribe endpoint ok');
@@ -174,7 +190,7 @@ if (root) {
         if (!notificationsSupported) return;
         try {
             if (Notification.permission !== 'granted' && currentPushToken) await stopNotifications();
-            else if (!optedOut()) await renewPushSubscription();
+            else if (!optedOut() && !currentPushToken) await renewPushSubscription();
         } catch { text('notification-message', s.notif_prepare_failed); }
     };
     notificationButton?.addEventListener('click', async event => {
