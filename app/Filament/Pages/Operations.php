@@ -6,6 +6,7 @@ use App\Services\BranchAccessService;
 use App\Services\BranchBoardService;
 use App\Services\EmployeeServiceService;
 use App\Services\OperationsService;
+use App\Services\ServiceLinkService;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Validation\ValidationException;
@@ -23,7 +24,8 @@ class Operations extends Page
 
     protected string $view = 'filament.pages.operations';
 
-    public string $serviceName = '';
+    /** Global service IDs currently active for the selected branch. */
+    public array $branchServiceIds = [];
 
     #[Locked]
     public ?int $serviceEmployeeId = null;
@@ -123,7 +125,9 @@ class Operations extends Page
             $this->missedTurnRetries = $branch->missed_turn_retries;
             $this->displayLocale = $branch->display_locale ?? 'ar';
             $this->panelLocale = $branch->panel_locale ?? 'ar';
+            $this->branchServiceIds = $branch->services()->where('is_active', true)->pluck('service_id')->all();
         } else {
+            $this->branchServiceIds = [];
             $this->weeklyHours = $this->defaultWeeklyHours();
         }
         $this->displayUrl = null;
@@ -176,10 +180,9 @@ class Operations extends Page
         $this->done();
     }
 
-    public function createService(): void
+    public function saveBranchServices(): void
     {
-        $this->service()->createService(auth()->user(), $this->selectedBranch, $this->serviceName);
-        $this->serviceName = '';
+        app(ServiceLinkService::class)->save(auth()->user(), $this->selectedBranch, $this->branchServiceIds);
         $this->done();
     }
 

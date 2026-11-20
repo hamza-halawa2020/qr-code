@@ -25,7 +25,13 @@ class CustomerQueueService
         $secret = $session->get('ticket.'.$branch->id);
         $active = $secret ? Ticket::where('token_hash', hash('sha256', $secret))->first() : null;
 
-        $services = $branch->services()->where('is_active', true)->orderBy('name')->get();
+        $services = $branch->services()
+            ->select('branch_services.*')
+            ->join('services', 'services.id', '=', 'branch_services.service_id')
+            ->where('branch_services.is_active', true)
+            ->orderBy('services.name')
+            ->with('service')
+            ->get();
 
         return compact('branch', 'active', 'secret', 'services');
     }

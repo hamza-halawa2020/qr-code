@@ -25,6 +25,7 @@ class AdminPanelProvider extends PanelProvider
             ->brandName(__('queue.panel_brand'))->colors(['primary' => Color::Emerald])
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
+            ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->middleware([
                 EncryptCookies::class, AddQueuedCookiesToResponse::class, StartSession::class,
                 AuthenticateSession::class, ShareErrorsFromSession::class, ValidateCsrfToken::class,

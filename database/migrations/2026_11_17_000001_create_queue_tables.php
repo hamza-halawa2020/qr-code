@@ -30,13 +30,18 @@ return new class extends Migration
             $table->foreignId('branch_id')->nullable()->constrained()->restrictOnDelete();
             $table->string('role')->default('agent');
         });
+        Schema::create('services', function (Blueprint $table) {
+            $table->id();
+            $table->string('name', 120)->unique();
+            $table->timestamps();
+        });
         Schema::create('branch_services', function (Blueprint $table) {
             $table->id();
             $table->foreignId('branch_id')->constrained()->cascadeOnDelete();
-            $table->string('name', 120);
+            $table->foreignId('service_id')->constrained('services')->restrictOnDelete();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
-            $table->unique(['branch_id', 'name']);
+            $table->unique(['branch_id', 'service_id']);
         });
         Schema::create('counters', function (Blueprint $table) {
             $table->id();
@@ -119,14 +124,15 @@ return new class extends Migration
         });
 
         // Every branch starts with one general service so bookings keep working.
-        DB::table('branches')->orderBy('id')->eachById(function ($branch) {
-            DB::table('branch_services')->insert(['branch_id' => $branch->id, 'name' => 'خدمة عامة', 'is_active' => true, 'created_at' => now(), 'updated_at' => now()]);
+        $general = DB::table('services')->insertGetId(['name' => 'خدمة عامة', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('branches')->orderBy('id')->eachById(function ($branch) use ($general) {
+            DB::table('branch_services')->insert(['branch_id' => $branch->id, 'service_id' => $general, 'is_active' => true, 'created_at' => now(), 'updated_at' => now()]);
         });
     }
 
     public function down(): void
     {
-        foreach (['push_subscriptions', 'outbox_messages', 'ticket_events', 'tickets', 'daily_sequences', 'counters', 'branch_services'] as $table) {
+        foreach (['push_subscriptions', 'outbox_messages', 'ticket_events', 'tickets', 'daily_sequences', 'counters', 'branch_services', 'services'] as $table) {
             Schema::dropIfExists($table);
         }
         Schema::table('users', function (Blueprint $table) {

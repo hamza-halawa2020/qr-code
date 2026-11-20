@@ -7,6 +7,7 @@ use App\Models\Branch;
 use App\Models\Counter;
 use App\Models\CounterSession;
 use App\Models\OutboxMessage;
+use App\Models\Service;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -23,7 +24,7 @@ class OperationsService
         $branches = $this->access->branches($user);
         $branch = $branches->firstWhere('id', $branchId);
 
-        return ['branches' => $branches, 'branch' => $branch, 'counters' => $branch?->counters()->with('user')->orderBy('number')->get() ?? collect(), 'employees' => User::with('services')->where('branch_id', $branch?->id ?? 0)->get(), 'counterSessions' => CounterSession::with(['counter', 'user'])->where('branch_id', $branch?->id ?? 0)->orderByDesc('id')->limit(20)->get()];
+        return ['branches' => $branches, 'branch' => $branch, 'allServices' => Service::orderBy('name')->get(), 'counters' => $branch?->counters()->with('user')->orderBy('number')->get() ?? collect(), 'employees' => User::with('services')->where('branch_id', $branch?->id ?? 0)->get(), 'counterSessions' => CounterSession::with(['counter', 'user'])->where('branch_id', $branch?->id ?? 0)->orderByDesc('id')->limit(20)->get()];
     }
 
     public function createBranch(User $user, array $input): Branch
@@ -44,7 +45,8 @@ class OperationsService
             foreach ($weekly as $day => $row) {
                 $branch->schedules()->create(['day_of_week' => $day] + $row);
             }
-            $branch->services()->create(['name' => 'خدمة عامة']);
+            $general = Service::firstOrCreate(['name' => 'خدمة عامة']);
+            $branch->services()->create(['service_id' => $general->id]);
 
             return $branch;
         });
@@ -221,16 +223,6 @@ class OperationsService
                 app(CounterSessionService::class)->closeForCounter($counter, 'assignment_changed');
             }
             $counter->update(['user_id' => $employeeId ?: null]);
-        });
-    }
-
-    public function createService(User $user, ?int $branchId, string $name): void
-    {
-        $branch = $this->access->authorizedBranch($user, $branchId);
-        $data = Validator::make(['serviceName' => trim($name)], ['serviceName' => ['required', 'string', 'max:120', Rule::unique('branch_services', 'name')->where('branch_id', $branch->id)]])->validate();
-        DB::transaction(function () use ($branch, $data) {
-            Branch::whereKey($branch->id)->lockForUpdate()->firstOrFail();
-            $branch->services()->create(['name' => $data['serviceName']]);
         });
     }
 

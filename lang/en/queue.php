@@ -185,8 +185,15 @@ return [
     'nav_operations'    => 'Operations',
     'nav_reports'       => 'Reports',
     'nav_appointments'  => 'Appointments',
+    'nav_services'      => 'Services',
     'panel_brand'       => 'Dawrak | Queue Management',
     'saved'             => 'Saved',
+
+    // ── Global services ────────────────────────────────────────────────────
+    'svc_model'          => 'service',
+    'svc_name'           => 'Service name',
+    'svc_branches_count' => 'Branches',
+    'svc_created'        => 'Created at',
 
     // ── Operations page ───────────────────────────────────────────────────
     'ops_current_branch'        => 'Current branch',
@@ -223,9 +230,11 @@ return [
     'ops_board_rotate_confirm'  => 'Generate a new screen link and invalidate the previous one?',
     'ops_board_note'            => 'Shows counters, numbers and statuses only. The link is for display purposes — sharing it allows viewing numbers. Previous Firebase credentials expire within one hour.',
     'ops_services_title'        => 'Branch services',
-    'ops_services_note'         => 'Numbering is unified; distribution is based on each agent\'s assigned services. Disabling a service only blocks new bookings — existing tickets are preserved.',
+    'ops_services_note'         => 'Services are managed globally on the Services page, then linked to a branch here. Unchecking a service only makes it inactive in this branch — existing tickets are preserved.',
     'ops_service_name'          => 'Service name',
     'ops_add_service'           => 'Add service',
+    'ops_save_branch_services'  => 'Save branch services',
+    'ops_no_global_services'    => 'No global services yet. Create them on the Services page.',
     'ops_svc_col_name'          => 'Service',
     'ops_svc_col_status'        => 'Status',
     'ops_svc_col_action'        => 'Action',

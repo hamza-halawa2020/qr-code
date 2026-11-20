@@ -7,6 +7,7 @@ use App\Models\Branch;
 use App\Models\BranchSchedule;
 use App\Models\BranchService;
 use App\Models\Counter;
+use App\Models\Service;
 use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -66,14 +67,24 @@ class DemoSeeder extends Seeder
         // ----------------------------------------------------------------
         // Services
         // ----------------------------------------------------------------
-        // The migration already inserts one "خدمة عامة" row for every branch
-        // that exists at migration time, but since the branch is created here
-        // (after migrations) we create all services explicitly.
-        $svcGeneral     = BranchService::create(['branch_id' => $branch->id, 'name' => 'خدمة عامة',           'is_active' => true]);
-        $svcAccounts    = BranchService::create(['branch_id' => $branch->id, 'name' => 'فتح حسابات',          'is_active' => true]);
-        $svcLoans       = BranchService::create(['branch_id' => $branch->id, 'name' => 'القروض والتمويل',     'is_active' => true]);
-        $svcComplaints  = BranchService::create(['branch_id' => $branch->id, 'name' => 'الشكاوى والاستفسارات', 'is_active' => true]);
-        $svcCards       = BranchService::create(['branch_id' => $branch->id, 'name' => 'بطاقات ائتمانية',     'is_active' => false]); // inactive service
+        // Services are managed globally, then linked to this branch. Keeping
+        // the link rows (and their IDs) is what tickets and agents reference.
+        $globalGeneral    = Service::firstOrCreate(['name' => 'خدمة عامة']);
+        $globalAccounts   = Service::firstOrCreate(['name' => 'فتح حسابات']);
+        $globalLoans      = Service::firstOrCreate(['name' => 'القروض والتمويل']);
+        $globalComplaints = Service::firstOrCreate(['name' => 'الشكاوى والاستفسارات']);
+        $globalCards      = Service::firstOrCreate(['name' => 'بطاقات ائتمانية']);
+
+        $link = fn (Service $service, bool $active) => BranchService::create([
+            'branch_id' => $branch->id,
+            'service_id' => $service->id,
+            'is_active' => $active,
+        ]);
+        $svcGeneral    = $link($globalGeneral, true);
+        $svcAccounts   = $link($globalAccounts, true);
+        $svcLoans      = $link($globalLoans, true);
+        $svcComplaints = $link($globalComplaints, true);
+        $svcCards      = $link($globalCards, false); // inactive in this branch
 
         // ----------------------------------------------------------------
         // Users  (admin + manager + 4 agents)
