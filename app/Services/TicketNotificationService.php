@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Jobs\PublishBranch;
 use App\Models\Branch;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class TicketNotificationService
@@ -18,9 +19,15 @@ class TicketNotificationService
     {
         abort_unless(config('firebase.enabled'), 503);
         $ticket = $this->customers->findTicket($secret);
+        $token = $this->firebase->customToken('ticket-'.$ticket->public_id, ['ticket_id' => $ticket->public_id]);
+        Log::info('[ticket][service] custom token built', [
+            'ticket_id' => $ticket->id,
+            'path' => 'tickets/'.$ticket->public_id,
+            'token_length' => strlen($token),
+        ]);
 
         return [
-            'token' => $this->firebase->customToken('ticket-'.$ticket->public_id, ['ticket_id' => $ticket->public_id]),
+            'token' => $token,
             'path' => 'tickets/'.$ticket->public_id,
         ];
     }
@@ -40,6 +47,11 @@ class TicketNotificationService
                 ['token_hash' => hash('sha256', $data['token'])],
                 ['ticket_id' => $ticket->id, 'token' => $data['token'], 'created_at' => now(), 'updated_at' => now()],
             );
+            Log::info('[ticket][service] push subscription stored', [
+                'ticket_id' => $ticket->id,
+                'branch_id' => $branch->id,
+                'token_length' => strlen($data['token']),
+            ]);
             app(CustomerExperienceService::class)->enqueueNear($branch);
             PublishBranch::dispatch($branch->id)->afterCommit();
         });

@@ -19,6 +19,28 @@ if (root) {
     const setOptOut = value => { notificationPreference = value; try { value ? localStorage.setItem(preferenceKey, '1') : localStorage.removeItem(preferenceKey); } catch {} };
     const text = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value ?? ''; };
     const connection = value => text('connection-status', value);
+    const log = (...args) => console.log('[queue]', ...args);
+    const logError = (label, error) => {
+        console.error('[queue] ' + label, {
+            message: error?.message ?? String(error),
+            name: error?.name ?? '',
+            code: error?.code ?? '',
+        });
+        const message = error?.message ?? '';
+        if (message) text('notification-message', message);
+        return message;
+    };
+    const report = (label, error) => {
+        logError(label, error);
+        const url = root.dataset.diagUrl;
+        if (!url) return;
+        void post(url, {
+            label,
+            message: String(error?.message ?? error).slice(0, 900),
+            name: String(error?.name ?? '').slice(0, 120),
+            code: String(error?.code ?? '').slice(0, 120),
+        }).catch(() => {});
+    };
     const apply = data => {
         if (Number(data.version) < version) return false;
         version = Number(data.version);
@@ -58,33 +80,54 @@ if (root) {
     };
     const connect = async () => {
         if (!config.enabled) return connection(s.conn_live_disabled);
+        log('connect start', { authUrl: root.dataset.authUrl, projectId: config.firebase?.projectId });
         try {
             const [{ initializeApp }, authModule, firestore] = await Promise.all([import('firebase/app'), import('firebase/auth'), import('firebase/firestore')]);
             firebaseApp ??= initializeApp(config.firebase);
             auth ??= authModule.getAuth(firebaseApp);
             await authModule.setPersistence(auth, authModule.inMemoryPersistence);
             const credentials = await post(root.dataset.authUrl);
+            log('custom token received', { path: credentials.path, tokenLength: credentials.token?.length ?? 0 });
             await authModule.signInWithCustomToken(auth, credentials.token);
+            log('custom token sign-in ok', { uid: auth.currentUser?.uid ?? '' });
             unsubscribe?.();
             unsubscribe = firestore.onSnapshot(firestore.doc(firestore.getFirestore(firebaseApp), credentials.path), { includeMetadataChanges: true }, snapshot => {
                 if (!snapshot.exists() || snapshot.metadata.fromCache) return;
                 if (!apply(snapshot.data())) return;
                 connection(s.conn_live);
-            }, () => connection(s.conn_live_failed));
-        } catch { connection(s.conn_live_failed); }
+                log('firestore snapshot applied', { path: credentials.path, version: snapshot.data()?.version ?? '' });
+            }, error => {
+                connection(s.conn_live_failed);
+                report('firestore listener failed', error);
+            });
+        } catch (error) {
+            connection(s.conn_live_failed);
+            report('connect failed', error);
+        }
     };
     const prepareNotifications = async () => {
         if (!notificationButton) return;
         notificationButton.disabled = true;
         if (!config.enabled) return text('notification-message', s.notif_unavailable);
+        const environment = {
+            secure: window.isSecureContext,
+            notification: 'Notification' in window,
+            serviceWorker: 'serviceWorker' in navigator,
+            permission: 'Notification' in window ? Notification.permission : 'missing',
+            vapidLength: (config.vapidKey ?? '').length,
+        };
+        log('notification environment', environment);
         if (!window.isSecureContext || !('Notification' in window) || !('serviceWorker' in navigator)) return text('notification-message', s.notif_insecure);
         try {
             messagingModule = await import('firebase/messaging');
             notificationsSupported = await messagingModule.isSupported();
+            log('messaging.isSupported', { supported: notificationsSupported });
             notificationButton.disabled = !notificationsSupported || !activeTicket;
             if (!notificationsSupported) text('notification-message', s.notif_unsupported);
             if (notificationsSupported && Notification.permission === 'granted' && !optedOut()) await renewPushSubscription();
-        } catch { text('notification-message', s.notif_prepare_failed); }
+        } catch (error) {
+            report('prepare notifications failed', error);
+        }
     };
     const updateNotificationButtons = () => {
         if (notificationButton) notificationButton.disabled = !activeTicket || !notificationsSupported || notificationBusy || !!currentPushToken;
@@ -97,16 +140,24 @@ if (root) {
             if (!firebaseApp) await connect();
             const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
             await navigator.serviceWorker.ready;
+            log('service worker registered', { scope: registration.scope, active: !!navigator.serviceWorker.controller });
             const messaging = messagingModule.getMessaging(firebaseApp);
+            log('requesting FCM token', { vapidLength: (config.vapidKey ?? '').length, senderId: config.firebase?.messagingSenderId ?? '' });
             const token = await messagingModule.getToken(messaging, { vapidKey: config.vapidKey, serviceWorkerRegistration: registration });
+            log('FCM token received', { tokenLength: token?.length ?? 0 });
             await post(root.dataset.subscribeUrl, { token });
+            log('subscribe endpoint ok');
             if (currentPushToken && currentPushToken !== token) await post(root.dataset.unsubscribeUrl, { token: currentPushToken });
             currentPushToken = token;
             removeForegroundListener ??= messagingModule.onMessage(messaging, payload => {
+                log('foreground FCM message', { kind: payload.data?.kind ?? '', ticketId: payload.data?.ticket_id ?? '' });
                 if (payload.data?.ticket_id && payload.data.ticket_id !== config.initial.id) return;
                 refresh(); text('notification-message', payload.data?.kind === 'near_turn' ? s.notif_near : s.notif_called);
             });
             text('notification-message', s.notif_enabled);
+        } catch (error) {
+            report('push subscription failed', error);
+            throw error;
         } finally { notificationBusy = false; updateNotificationButtons(); }
     };
     const stopNotifications = async () => {
@@ -139,6 +190,9 @@ if (root) {
         finally { updateNotificationButtons(); }
     });
     stopNotificationButton?.addEventListener('click', () => stopNotifications().catch(() => text('notification-message', s.notif_stop_error)));
+    window.addEventListener('unhandledrejection', event => report('unhandled rejection', event.reason));
+    window.addEventListener('error', event => report('window error', event.error ?? event.message));
+    log('ticket live sync boot', { kind: root.dataset.kind ?? '', ticketId: config.initial?.id ?? '', enabled: config.enabled });
     apply(config.initial); connect(); prepareNotifications();
     setInterval(connect, 45 * 60 * 1000);
     setInterval(syncNotifications, 30 * 60 * 1000);

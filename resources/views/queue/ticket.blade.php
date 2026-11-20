@@ -3,7 +3,8 @@
          data-state-url="{{ route('ticket.state', $secret) }}"
          data-auth-url="{{ route('ticket.firebase', $secret) }}"
          data-subscribe-url="{{ route('ticket.subscribe', $secret) }}"
-         data-unsubscribe-url="{{ route('ticket.unsubscribe', $secret) }}">
+         data-unsubscribe-url="{{ route('ticket.unsubscribe', $secret) }}"
+         data-diag-url="{{ route('ticket.diag', $secret) }}">
         <section class="ticket-main">
             <span class="eyebrow">{{ $ticket->branch->name }}</span>
             @if($ticket->service_name)

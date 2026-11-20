@@ -13,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Log;
 
 class QueueController extends Controller
 {
@@ -64,14 +65,43 @@ class QueueController extends Controller
 
     public function firebaseTicket(string $secret): JsonResponse
     {
-        return response()->json($this->notifications->firebaseCredentials($secret))->header('Cache-Control', 'no-store');
+        try {
+            $credentials = $this->notifications->firebaseCredentials($secret);
+            Log::info('[ticket][firebase] credentials issued', [
+                'ticket' => substr(hash('sha256', $secret), 0, 12),
+                'path' => $credentials['path'],
+                'token_length' => strlen($credentials['token']),
+            ]);
+
+            return response()->json($credentials)->header('Cache-Control', 'no-store');
+        } catch (\Throwable $error) {
+            Log::error('[ticket][firebase] credentials failed', [
+                'ticket' => substr(hash('sha256', $secret), 0, 12),
+                'message' => $error->getMessage(),
+            ]);
+            throw $error;
+        }
     }
 
     public function subscribe(Request $request, string $secret): JsonResponse
     {
-        $this->notifications->subscribe($secret, $request->input('token'));
+        $token = $request->input('token');
+        Log::info('[ticket][firebase] subscribe request', [
+            'ticket' => substr(hash('sha256', $secret), 0, 12),
+            'token_length' => is_string($token) ? strlen($token) : 0,
+        ]);
+        try {
+            $this->notifications->subscribe($secret, $token);
+            Log::info('[ticket][firebase] subscribe stored');
 
-        return response()->json(['ok' => true]);
+            return response()->json(['ok' => true]);
+        } catch (\Throwable $error) {
+            Log::error('[ticket][firebase] subscribe failed', [
+                'ticket' => substr(hash('sha256', $secret), 0, 12),
+                'message' => $error->getMessage(),
+            ]);
+            throw $error;
+        }
     }
 
     public function display(Counter $counter, string $secret): View
@@ -82,6 +112,24 @@ class QueueController extends Controller
     public function unsubscribe(Request $request, string $secret): JsonResponse
     {
         $this->notifications->unsubscribe($secret, $request->input('token'));
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function diag(Request $request, string $secret): JsonResponse
+    {
+        $data = $request->validate([
+            'label' => ['required', 'string', 'max:120'],
+            'message' => ['required', 'string', 'max:900'],
+            'name' => ['sometimes', 'string', 'max:120'],
+            'code' => ['sometimes', 'string', 'max:120'],
+        ]);
+        Log::warning('[ticket][browser] '.$data['label'], [
+            'ticket' => substr(hash('sha256', $secret), 0, 12),
+            'name' => $data['name'] ?? '',
+            'code' => $data['code'] ?? '',
+            'message' => $data['message'],
+        ]);
 
         return response()->json(['ok' => true]);
     }

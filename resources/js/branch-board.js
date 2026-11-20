@@ -30,16 +30,29 @@ if (board) {
     };
     const connect = async () => {
         if (!config.enabled) { status.textContent = s.conn_live_disabled; return; }
+        console.log('[board] connect start', { authUrl: board.dataset.authUrl, projectId: config.firebase?.projectId });
         try {
             const [{ initializeApp }, authModule, firestore] = await Promise.all([import('firebase/app'), import('firebase/auth'), import('firebase/firestore')]);
             app ??= initializeApp(config.firebase); auth ??= authModule.getAuth(app);
             await authModule.setPersistence(auth, authModule.inMemoryPersistence);
             const response = await fetch(board.dataset.authUrl, { method: 'POST', headers: { Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content } });
-            if (!response.ok) throw new Error();
-            const credentials = await response.json(); await authModule.signInWithCustomToken(auth, credentials.token);
+            if (!response.ok) throw new Error('firebase auth endpoint HTTP ' + response.status);
+            const credentials = await response.json();
+            console.log('[board] custom token received', { path: credentials.path, tokenLength: credentials.token?.length ?? 0 });
+            await authModule.signInWithCustomToken(auth, credentials.token);
             unsubscribe?.();
-            unsubscribe = firestore.onSnapshot(firestore.doc(firestore.getFirestore(app), credentials.path), snapshot => { if (snapshot.exists() && !snapshot.metadata.fromCache) apply(snapshot.data()); }, () => { status.textContent = s.board_conn_failed; });
-        } catch { status.textContent = s.board_conn_failed; }
+            unsubscribe = firestore.onSnapshot(firestore.doc(firestore.getFirestore(app), credentials.path), snapshot => {
+                if (!snapshot.exists() || snapshot.metadata.fromCache) return;
+                apply(snapshot.data());
+                console.log('[board] snapshot applied', { version: snapshot.data()?.version ?? '' });
+            }, error => {
+                status.textContent = s.board_conn_failed;
+                console.error('[board] listener failed', error?.message ?? error);
+            });
+        } catch (error) {
+            status.textContent = s.board_conn_failed;
+            console.error('[board] connect failed', error?.message ?? error);
+        }
     };
     apply(config.initial); connect(); setInterval(connect, 45 * 60 * 1000);
     window.addEventListener('online', () => { refresh(); connect(); });

@@ -12,6 +12,7 @@ use App\Services\QueueSnapshot;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class PublishBranch implements ShouldQueue
 {
@@ -72,9 +73,22 @@ class PublishBranch implements ShouldQueue
 
                     continue;
                 }
-                foreach (DB::table('push_subscriptions')->where('ticket_id', $ticket->id)->get() as $subscription) {
+                $subscriptions = DB::table('push_subscriptions')->where('ticket_id', $ticket->id)->get();
+                Log::info('[firebase] notification dispatch', [
+                    'branch_id' => $branch->id,
+                    'ticket_id' => $ticket->id,
+                    'message_id' => $message->id,
+                    'type' => $message->type,
+                    'subscriptions' => $subscriptions->count(),
+                ]);
+                foreach ($subscriptions as $subscription) {
                     if (! $firebase->notify($subscription->token, (string) $message->id, $snapshot->ticket($ticket) + ['notification_kind' => $near ? 'near_turn' : 'called'])) {
                         DB::table('push_subscriptions')->where('id', $subscription->id)->delete();
+                        Log::warning('[firebase] stale subscription removed', [
+                            'branch_id' => $branch->id,
+                            'ticket_id' => $ticket->id,
+                            'subscription_id' => $subscription->id,
+                        ]);
                     }
                 }
             }

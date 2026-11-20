@@ -30,6 +30,7 @@ Route::middleware('throttle:queue-state')->group(function () {
     Route::post('/t/{secret}/firebase', [QueueController::class, 'firebaseTicket'])->name('ticket.firebase');
     Route::post('/t/{secret}/subscribe', [QueueController::class, 'subscribe'])->name('ticket.subscribe');
     Route::post('/t/{secret}/unsubscribe', [QueueController::class, 'unsubscribe'])->name('ticket.unsubscribe');
+    Route::post('/t/{secret}/diag', [QueueController::class, 'diag'])->name('ticket.diag');
     Route::get('/display/{counter}/{secret}', [QueueController::class, 'display'])->middleware('display.locale')->name('display.show');
     Route::get('/display/{counter}/{secret}/state', [QueueController::class, 'displayState'])->middleware('display.locale')->name('display.state');
     Route::post('/display/{counter}/{secret}/firebase', [QueueController::class, 'firebaseDisplay'])->middleware('display.locale')->name('display.firebase');
