@@ -24,7 +24,7 @@ class QueueService
 
                 return $existing;
             }
-            $this->require($branch->acceptsBookings(), 'الحجز متوقف حاليًا. راجع مواعيد عمل الفرع.');
+            $this->require($branch->acceptsBookings(), __('queue.err_booking_closed'));
             $bookingDetails = $details ? app(BookingDetailsService::class)->validate($branch, $details, false, $honorReservedService) : [];
             $date = now($branch->timezone)->toDateString();
             DB::table('daily_sequences')->insertOrIgnore(['branch_id' => $branch->id, 'business_date' => $date, 'last_number' => 0]);
@@ -49,8 +49,8 @@ class QueueService
             $branch = Branch::whereKey($counter->branch_id)->lockForUpdate()->firstOrFail();
             $counter = Counter::whereKey($counter->id)->lockForUpdate()->firstOrFail();
             $this->authorize($counter, $user);
-            $this->require(! $counter->is_paused, 'الشباك في استراحة. استأنف العمل أولًا.');
-            $this->require(! $counter->currentTicket(), 'أنهِ معالجة العميل الحالي قبل استدعاء التالي.');
+            $this->require(! $counter->is_paused, __('queue.err_counter_paused'));
+            $this->require(! $counter->currentTicket(), __('queue.err_counter_has_ticket'));
             $waiting = Ticket::where('branch_id', $branch->id)->whereDate('business_date', now($branch->timezone)->toDateString())->where('status', 'waiting');
             $ticket = app(QueueOrderService::class)->order(app(EmployeeServiceService::class)->eligible($waiting, $user, $branch->id))->lockForUpdate()->first();
             if (! $ticket) {
@@ -84,9 +84,9 @@ class QueueService
                 'complete' => $from === TicketStatus::Serving,
                 'cancel' => in_array($from, [TicketStatus::Waiting, TicketStatus::Deferred], true),
             };
-            $this->require($allowed, 'لا يمكن تنفيذ الإجراء على حالة التذكرة الحالية.');
+            $this->require($allowed, __('queue.err_transition_not_allowed'));
             if ($action === 'absent') {
-                $this->require($ticket->called_at && ! $ticket->callDeadline()->isFuture(), 'لم تنتهِ مهلة حضور العميل بعد.');
+                $this->require($ticket->called_at && ! $ticket->callDeadline()->isFuture(), __('queue.err_absent_timer_active'));
                 $limit = $ticket->retry_limit ?? $branch->missed_turn_retries;
                 if ($ticket->retry_attempts < $limit) {
                     $target = TicketStatus::Deferred;
@@ -129,8 +129,61 @@ class QueueService
         }, 5);
     }
 
-    public function pause(Counter $counter, User $user): void
+    /**
+     * Return a called or serving ticket back to the waiting queue.
+     * Service change is only permitted when the ticket is in 'called' status.
+     */
+    public function requeue(Ticket $ticket, User $user, ?int $newBranchServiceId = null): Ticket
     {
+        return DB::transaction(function () use ($ticket, $user, $newBranchServiceId) {
+            $branch = Branch::whereKey($ticket->branch_id)->lockForUpdate()->firstOrFail();
+            $ticket = Ticket::whereKey($ticket->id)->lockForUpdate()->firstOrFail();
+            $from = $ticket->status;
+
+            $this->require(
+                in_array($from, [TicketStatus::Called, TicketStatus::Serving], true),
+                __('queue.err_requeue_status')
+            );
+
+            if ($newBranchServiceId !== null && $from !== TicketStatus::Called) {
+                throw ValidationException::withMessages(['queue' => __('queue.err_requeue_service_serving')]);
+            }
+
+            if ($newBranchServiceId !== null) {
+                // Validate the new service belongs to this branch and is active.
+                $exists = \App\Models\BranchService::where('id', $newBranchServiceId)
+                    ->where('branch_id', $branch->id)
+                    ->where('is_active', true)
+                    ->exists();
+                $this->require($exists, __('queue.err_requeue_service_invalid'));
+            }
+
+            $values = [
+                'status'       => TicketStatus::Waiting,
+                'counter_id'   => null,
+                'user_id'      => null,
+                'called_at'    => null,
+                'call_expires_at' => null,
+                'started_at'   => null,
+                'finished_at'  => null,
+                'deferred_at'  => null,
+                'retry_ready_at' => null,
+            ];
+
+            if ($newBranchServiceId !== null) {
+                $service = \App\Models\BranchService::with('service')->find($newBranchServiceId);
+                $values['branch_service_id'] = $newBranchServiceId;
+                $values['service_name']      = $service?->service?->name ?? $ticket->service_name;
+            }
+
+            $ticket->update($values);
+            $this->record($branch, $ticket, 'requeued', $from, $user);
+
+            return $ticket;
+        }, 5);
+    }
+
+    public function pause(Counter $counter, User $user): void    {
         DB::transaction(function () use ($counter, $user) {
             $branch = Branch::whereKey($counter->branch_id)->lockForUpdate()->firstOrFail();
             $counter = Counter::whereKey($counter->id)->lockForUpdate()->firstOrFail();

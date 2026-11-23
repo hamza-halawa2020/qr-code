@@ -3,8 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Services\BranchAccessService;
-use App\Services\QueueReportService;
-use Filament\Pages\Page;
+use App\Services\QueueReportService;use Filament\Pages\Page;
 use Livewire\Attributes\Locked;
 use Livewire\WithPagination;
 
@@ -39,6 +38,11 @@ class Reports extends Page
     public function mount(): void
     {
         $this->date = now('Africa/Cairo')->toDateString();
+        $saved = session('admin_selected_branch');
+        $branches = app(BranchAccessService::class)->branches(auth()->user());
+        if ($saved && $branches->contains('id', $saved)) {
+            $this->branchId = (int) $saved;
+        }
     }
 
     public function updatedDate(): void

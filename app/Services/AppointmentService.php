@@ -58,15 +58,15 @@ class AppointmentService
         DB::transaction(function () use ($branch, $secret, $data) {
             Branch::whereKey($branch->id)->lockForUpdate()->firstOrFail();
 
-            $this->require((bool) $branch->appointments_enabled, 'الحجز الإلكتروني غير متاح لهذا الفرع حاليًا.');
+            $this->require((bool) $branch->appointments_enabled, __('queue.err_appt_disabled'));
 
             $times = $this->generateTimes($branch, $data['date']);
             $requested = Carbon::createFromFormat('Y-m-d H:i', $data['date'].' '.$data['time'], $branch->timezone ?: 'Africa/Cairo')->second(0)->utc();
-            $this->require(in_array($requested->toDateTimeString(), array_map(fn (Carbon $time) => $time->toDateTimeString(), $times), true), 'الموعد غير متاح. اختار وقتًا من الأوقات المعروضة.');
-            $this->require($requested->lte(now()->addDays(30)), 'الموعد لم يعد متاحًا للحجز.');
+            $this->require(in_array($requested->toDateTimeString(), array_map(fn (Carbon $time) => $time->toDateTimeString(), $times), true), __('queue.err_appt_slot_unavailable'));
+            $this->require($requested->lte(now()->addDays(30)), __('queue.err_appt_slot_expired'));
 
             $slot = AppointmentSlot::firstOrCreate(['branch_id' => $branch->id, 'starts_at' => $requested]);
-            $this->require($slot->appointments()->whereIn('status', ['booked', 'checked_in'])->count() < 1, 'اكتمل حجز هذا الموعد. اختار وقتًا آخر.');
+            $this->require($slot->appointments()->whereIn('status', ['booked', 'checked_in'])->count() < 1, __('queue.err_appt_slot_full'));
 
             $details = app(BookingDetailsService::class)->validate($branch, ['service_id' => $data['service_id'], 'customer_phone' => $data['customer_phone']]);
             Appointment::create([
@@ -99,10 +99,10 @@ class AppointmentService
             if ($appointment->status === 'checked_in' && $appointment->ticket_id) {
                 return $secret;
             }
-            $this->require($appointment->status === 'booked', 'هذا الموعد غير متاح لتأكيد الحضور.');
-            $this->require(now()->betweenIncluded($appointment->slot->starts_at->copy()->subMinutes(15), $appointment->slot->starts_at->copy()->addMinutes(30)), 'تأكيد الحضور متاح من 15 دقيقة قبل الموعد حتى 30 دقيقة بعده.');
+            $this->require($appointment->status === 'booked', __('queue.err_appt_checkin_status'));
+            $this->require(now()->betweenIncluded($appointment->slot->starts_at->copy()->subMinutes(15), $appointment->slot->starts_at->copy()->addMinutes(30)), __('queue.err_appt_checkin_window'));
             $active = app(CustomerQueueService::class)->branchData($branch, $session)['active'];
-            $this->require(! $active?->status->isActive(), 'عندك تذكرة نشطة بالفعل؛ أنهِها أو ألغِها قبل تأكيد موعدك.');
+            $this->require(! $active?->status->isActive(), __('queue.err_appt_active_ticket'));
             $ticket = app(QueueService::class)->book($branch, $secret, 'appointment-'.$appointment->id, ['service_id' => $appointment->branch_service_id, 'customer_phone' => $appointment->customer_phone], true);
             $ticket->update(['appointment_at' => $appointment->slot->starts_at, 'customer_name' => $appointment->customer_name]);
             $branch->increment('version');
@@ -120,7 +120,7 @@ class AppointmentService
         DB::transaction(function () use ($appointment) {
             Branch::whereKey($appointment->slot->branch_id)->lockForUpdate()->firstOrFail();
             $appointment = Appointment::lockForUpdate()->findOrFail($appointment->id);
-            $this->require($appointment->status === 'booked', 'لا يمكن إلغاء موعد تم تأكيد حضوره من هنا.');
+            $this->require($appointment->status === 'booked', __('queue.err_appt_cancel_checked_in'));
             $appointment->update(['status' => 'cancelled']);
         });
     }

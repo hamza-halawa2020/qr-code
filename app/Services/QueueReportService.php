@@ -23,7 +23,7 @@ class QueueReportService
             ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))->whereDate('business_date', $date);
         $tickets = (clone $query)->get();
         $ratings = $tickets->whereNotNull('rating');
-        $serviceStats = $tickets->groupBy(fn ($ticket) => $ticket->service_name ?? 'غير محددة')->map(function ($items, $name) {
+        $serviceStats = $tickets->groupBy(fn ($ticket) => $ticket->service_name ?? __('queue.err_report_no_service'))->map(function ($items, $name) {
             $done = $items->where('status', TicketStatus::Completed);
             $durations = $done->filter(fn ($ticket) => $ticket->started_at && $ticket->finished_at)->map(fn ($ticket) => $ticket->started_at->diffInSeconds($ticket->finished_at) / 60);
 
@@ -35,7 +35,7 @@ class QueueReportService
             $durations = $served->filter(fn ($ticket) => $ticket->started_at && $ticket->finished_at)
                 ->map(fn ($ticket) => $ticket->started_at->diffInSeconds($ticket->finished_at));
 
-            return ['name' => $served->first()->user?->name ?? 'حساب غير متاح', 'completed' => $served->count(), 'serviceMinutes' => $durations->isEmpty() ? null : round($durations->avg() / 60, 1)];
+            return ['name' => $served->first()->user?->name ?? __('queue.err_report_no_account'), 'completed' => $served->count(), 'serviceMinutes' => $durations->isEmpty() ? null : round($durations->avg() / 60, 1)];
         })->sortByDesc('completed')->values();
         $hourlyStats = $tickets->countBy(fn ($ticket) => $ticket->created_at->timezone($ticket->branch->timezone)->format('H:00'))->sortKeys();
         $ticketRows = (clone $query)->when($status, fn ($query) => $query->where('status', $status))

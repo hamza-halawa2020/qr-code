@@ -18,14 +18,14 @@ enum TicketStatus: string
         $key = 'queue.status_label_' . $this->value;
         // Fall back to hard-coded Arabic if the key is somehow missing
         $fallbacks = [
-            'waiting'   => 'في الانتظار',
-            'called'    => 'دورك الآن',
-            'deferred'  => 'في انتظار إعادة النداء',
-            'serving'   => 'جاري تقديم الخدمة',
-            'completed' => 'تمت الخدمة',
-            'no_show'   => 'لم يحضر',
-            'cancelled' => 'ملغاة',
-            'expired'   => 'انتهت الصلاحية',
+            'waiting'   => 'Waiting',
+            'called'    => 'Your turn',
+            'deferred'  => 'Awaiting retry',
+            'serving'   => 'Being served',
+            'completed' => 'Completed',
+            'no_show'   => 'No show',
+            'cancelled' => 'Cancelled',
+            'expired'   => 'Expired',
         ];
         $translated = __($key);
         return $translated !== $key ? $translated : ($fallbacks[$this->value] ?? $this->value);

@@ -24,10 +24,10 @@ class BookingDetailsService
             'service_id' => ['required', 'integer', $exists],
             'customer_phone' => [$phoneRequired ? 'required' : 'nullable', 'string', 'max:20', 'regex:/^(?:01[0125][0-9]{8}|\+[1-9][0-9]{7,14})$/'],
         ], [
-            'service_id.required' => 'اختار الخدمة المطلوبة.',
-            'service_id.exists' => 'الخدمة غير متاحة في الفرع. اختار خدمة متاحة.',
-            'customer_phone.required' => 'اكتب رقم موبايلك.',
-            'customer_phone.regex' => 'اكتب رقم موبايل مصري صحيح أو رقم دولي يبدأ بكود الدولة (+).',
+            'service_id.required' => __('queue.err_booking_details_service'),
+            'service_id.exists'   => __('queue.err_booking_details_no_service'),
+            'customer_phone.required' => __('queue.err_booking_details_phone'),
+            'customer_phone.regex'    => __('queue.err_booking_details_phone_fmt'),
         ])->validate();
         $service = BranchService::where('branch_id', $branch->id)->when(! $allowInactive, fn ($q) => $q->where('is_active', true))->findOrFail($data['service_id']);
 

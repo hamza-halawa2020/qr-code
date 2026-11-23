@@ -28,7 +28,7 @@ class CustomerExperienceService
         DB::transaction(function () use ($ticket, $data) {
             $ticket = Ticket::whereKey($ticket->id)->lockForUpdate()->firstOrFail();
             if ($ticket->status->value !== 'completed') {
-                throw ValidationException::withMessages(['rating' => 'التقييم متاح بعد إكمال الخدمة فقط.']);
+                throw ValidationException::withMessages(['rating' => __('queue.err_rating_not_completed')]);
             }
             if ($ticket->rated_at) {
                 return;

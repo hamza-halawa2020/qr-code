@@ -8,7 +8,7 @@
         <form method="get" class="booking-form">
             <label>{{ __('queue.label_branch') }}
                 <select onchange="location.href=this.value">
-                    @foreach(\App\Models\Branch::orderBy('name')->get() as $item)
+                    @foreach(\App\Models\Branch::where('appointments_enabled', true)->orderBy('name')->get() as $item)
                         <option value="{{ route('appointments.index', $item) }}" @selected($item->id === $branch->id)>{{ $item->name }}</option>
                     @endforeach
                 </select>
@@ -23,6 +23,9 @@
     </section>
     <section class="panel" style="margin-top:24px">
         <div>{{ __('queue.booking_details_title') }}</div>
+        @if(!$appointmentsEnabled)
+            <p>{{ __('queue.appt_disabled') }}</p>
+        @else
         @if($errors->any())<p role="alert">{{ $errors->first() }}</p>@endif
         <form method="post" action="{{ route('appointments.book', $branch) }}" class="booking-form">@csrf
             <input type="hidden" name="date" value="{{ $date }}">
@@ -56,6 +59,7 @@
             </label>
             <button class="button" data-submit @disabled($appointmentSlots->isEmpty())>{{ __('queue.confirm_appointment') }}</button>
         </form>
+        @endif
     </section>
     <p>{{ __('queue.appt_footer_note') }}</p>
 </div>

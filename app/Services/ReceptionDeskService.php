@@ -33,7 +33,7 @@ class ReceptionDeskService
         abort_unless(in_array($action, ['start', 'complete', 'absent', 'recall'], true), 422);
         $ticket = $counter->currentTicket();
         abort_unless($ticket, 422);
-        abort_if($expectedTicketId !== null && $ticket->id !== $expectedTicketId, 409, 'تغير العميل الحالي. حدّث الشاشة قبل تنفيذ الإجراء.');
+        abort_if($expectedTicketId !== null && $ticket->id !== $expectedTicketId, 409, __('queue.err_client_changed'));
 
         return $this->queue->transition($ticket, $action, $user);
     }

@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Services\BranchAccessService;
+use App\Services\BranchBoardService;
 use App\Services\EmployeeServiceService;
 use App\Services\OperationsService;
 use App\Services\ServiceLinkService;
@@ -10,6 +11,7 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\Dehydrated;
 
 class Operations extends Page
 {
@@ -40,12 +42,15 @@ class Operations extends Page
     /** Keyed 0=Sunday … 6=Saturday. */
     public array $weeklyHours = [];
 
+    private const BRANCH_SESSION_KEY = 'admin_selected_branch';
+
     public ?int $selectedBranch = null;
 
     public string $employeeName = '';
 
     public string $employeePhone = '';
 
+    #[Dehydrated(false)]
     public string $employeePassword = '';
 
     public string $employeeRole = 'agent';
@@ -63,6 +68,7 @@ class Operations extends Page
 
     public bool $editEmployeeActive = true;
 
+    #[Dehydrated(false)]
     public string $editEmployeePassword = '';
 
     public string $counterName = '';
@@ -104,12 +110,15 @@ class Operations extends Page
     public function mount(): void
     {
         $this->weeklyHours = $this->defaultWeeklyHours();
-        $this->selectedBranch = $this->branches()->first()?->id;
+        $branches = $this->branches();
+        $saved = session(self::BRANCH_SESSION_KEY);
+        $this->selectedBranch = $branches->contains('id', $saved) ? (int) $saved : $branches->first()?->id;
         $this->updatedSelectedBranch();
     }
 
     public function updatedSelectedBranch(): void
     {
+        session([self::BRANCH_SESSION_KEY => $this->selectedBranch]);
         $branch = $this->branches()->firstWhere('id', $this->selectedBranch);
         if ($branch) {
             $this->opensAt = $branch->opens_at;

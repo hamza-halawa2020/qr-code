@@ -29,18 +29,18 @@ class TicketEvent extends Model
         }
         // Arabic fallbacks for unrecognised types
         return match ($this->type) {
-            'booked'       => 'حجز التذكرة',
-            'called'       => 'استدعاء العميل',
-            'recalled'     => 'إعادة النداء',
-            'start'        => 'بدء الخدمة',
-            'complete'     => 'إنهاء الخدمة',
-            'absent'       => 'تسجيل الغياب',
-            'cancel'       => 'إلغاء التذكرة',
-            'day_closed'   => 'انتهاء يوم العمل',
-            'deferred'     => 'تأجيل لإعادة النداء',
-            'retry_ready'  => 'جاهز لإعادة النداء',
-            'retry_called' => 'نداء فرصة إضافية',
-            'requeued'     => 'إرجاع للطابور',
+            'booked'       => __('queue.event_booked'),
+            'called'       => __('queue.event_called'),
+            'recalled'     => __('queue.event_recalled'),
+            'start'        => __('queue.event_start'),
+            'complete'     => __('queue.event_complete'),
+            'absent'       => __('queue.event_absent'),
+            'cancel'       => __('queue.event_cancel'),
+            'day_closed'   => __('queue.event_day_closed'),
+            'deferred'     => __('queue.event_deferred'),
+            'retry_ready'  => __('queue.event_retry_ready'),
+            'retry_called' => __('queue.event_retry_called'),
+            'requeued'     => __('queue.event_requeued'),
             default        => $this->type,
         };
     }

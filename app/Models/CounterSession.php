@@ -34,12 +34,12 @@ class CounterSession extends Model
             return $translated;
         }
         return match ($this->end_reason) {
-            'employee_finished' => 'أنهى الموظف الوردية',
-            'assignment_changed'=> 'تغيير الموظف',
-            'account_disabled'  => 'تعطيل الحساب',
-            'day_closed'        => 'إغلاق يوم العمل',
-            'day_changed'       => 'بداية يوم جديد',
-            default             => 'نشطة',
+            'employee_finished' => __('queue.reason_employee_finished'),
+            'assignment_changed'=> __('queue.reason_assignment_changed'),
+            'account_disabled'  => __('queue.reason_account_disabled'),
+            'day_closed'        => __('queue.reason_day_closed'),
+            'day_changed'       => __('queue.reason_day_changed'),
+            default             => __('queue.reason_active'),
         };
     }
 }

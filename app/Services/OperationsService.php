@@ -53,7 +53,7 @@ class OperationsService
             foreach ($weekly as $day => $row) {
                 $branch->schedules()->create(['day_of_week' => $day] + $row);
             }
-            $general = Service::firstOrCreate(['name' => 'خدمة عامة']);
+            $general = Service::firstOrCreate(['name' => __('queue.err_service_general')]);
             $branch->services()->create(['service_id' => $general->id]);
 
             return $branch;
@@ -139,7 +139,7 @@ class OperationsService
             $hasCurrentTicket = Counter::where('user_id', $employee->id)->whereHas('tickets', fn ($query) => $query->whereIn('status', ['called', 'serving']))->exists();
             if ($changesAccess && $hasCurrentTicket) {
                 $field = $transferring ? 'editEmployeeBranchId' : 'editEmployeeActive';
-                $message = $transferring ? __('queue.ops_transfer_active_ticket') : 'أنهِ التذكرة الحالية قبل تغيير وصول الموظف أو كلمة مروره.';
+                $message = $transferring ? __('queue.ops_transfer_active_ticket') : __('queue.err_employee_ticket_access');
                 throw ValidationException::withMessages([$field => $message]);
             }
 
@@ -261,7 +261,7 @@ class OperationsService
             $counter = Counter::where('branch_id', $branch->id)->lockForUpdate()->findOrFail($counterId);
             $data = Validator::make($input, ['editCounterName' => 'required|string|max:120', 'editCounterNumber' => ['required', 'integer', 'min:1', Rule::unique('counters', 'number')->where('branch_id', $branch->id)->ignore($counter->id)]], ['editCounterNumber.unique' => __('queue.ops_counter_number_taken')])->validate();
             if ($counter->currentTicket()) {
-                throw ValidationException::withMessages(['editCounterName' => 'أنهِ التذكرة الحالية قبل تعديل بيانات الشباك.']);
+                throw ValidationException::withMessages(['editCounterName' => __('queue.err_counter_ticket_edit')]);
             }
             $counter->update(['name' => $data['editCounterName'], 'number' => $data['editCounterNumber']]);
             $branch->refresh()->increment('version');
@@ -284,7 +284,7 @@ class OperationsService
             Branch::whereKey($branch->id)->lockForUpdate()->firstOrFail();
             $counter = Counter::where('branch_id', $branch->id)->lockForUpdate()->findOrFail($counterId);
             if ($counter->currentTicket()) {
-                throw ValidationException::withMessages(['assignmentEmployeeId' => 'أنهِ التذكرة الحالية قبل تغيير الموظف.']);
+                throw ValidationException::withMessages(['assignmentEmployeeId' => __('queue.err_counter_ticket_assign')]);
             }
             if ($counter->user_id !== $employeeId) {
                 app(CounterSessionService::class)->closeForCounter($counter, 'assignment_changed');
@@ -333,7 +333,7 @@ class OperationsService
         foreach (range(0, 6) as $day) {
             $row = $weekly[$day] ?? null;
             if (! is_array($row)) {
-                $errors["weeklyHours.$day"] = ['اختار مواعيد هذا اليوم.'];
+                $errors["weeklyHours.$day"] = [__('queue.err_hours_day_required')];
                 continue;
             }
 

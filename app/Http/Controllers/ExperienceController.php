@@ -29,16 +29,19 @@ class ExperienceController extends Controller
     {
         $experience->rate($secret, $request->only(['rating', 'rating_comment']));
 
-        return redirect()->route('ticket.show', $secret)->with('status', 'شكرًا لتقييمك.');
+        return redirect()->route('ticket.show', $secret)->with('status', __('queue.rating_thanks_redirect'));
     }
 
     public function appointments(Request $request, Branch $branch, AppointmentService $appointments)
     {
+        abort_unless($branch->appointments_enabled, 404);
+
         return view('queue.appointments', $appointments->slots($branch, $request->only(['date'])));
     }
 
     public function bookAppointment(Request $request, Branch $branch, AppointmentService $appointments)
     {
+        abort_unless($branch->appointments_enabled, 404);
         return redirect()->route('appointment.show', $appointments->book($branch, $request->session(), $request->only(['date', 'time', 'service_id', 'customer_name', 'customer_phone', 'customer_email'])));
     }
 

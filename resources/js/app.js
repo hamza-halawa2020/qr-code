@@ -60,7 +60,7 @@ if (root) {
             text('display-label', data.number ? s.display_serving : data.paused ? s.display_paused : s.display_waiting);
         } else {
             activeTicket = ['waiting', 'deferred', 'called', 'serving'].includes(data.status);
-            if (notificationButton) notificationButton.disabled = !activeTicket || !notificationsSupported || notificationBusy || !!currentPushToken;
+            allEnableButtons.forEach(btn => { btn.disabled = !activeTicket || !notificationsSupported || notificationBusy || !!currentPushToken; });
             text('ticket-status', data.label); text('ticket-ahead', data.ahead); text('ticket-counter', data.counter);
             text('wait-estimate', data.estimate ?? '');
             const estimate = document.getElementById('estimate-section'); if (estimate) estimate.hidden = data.status !== 'waiting';
@@ -119,9 +119,9 @@ if (root) {
         return connectInFlight;
     };
     const prepareNotifications = async () => {
-        if (!notificationButton) return;
-        notificationButton.disabled = true;
-        if (!config.enabled) return text('notification-message', s.notif_unavailable);
+        if (!allEnableButtons.length) return;
+        allEnableButtons.forEach(btn => { btn.disabled = true; });
+        if (!config.enabled) return textNotif(s.notif_unavailable);
         const environment = {
             secure: window.isSecureContext,
             notification: 'Notification' in window,
@@ -130,13 +130,13 @@ if (root) {
             vapidLength: (config.vapidKey ?? '').length,
         };
         log('notification environment', environment);
-        if (!window.isSecureContext || !('Notification' in window) || !('serviceWorker' in navigator)) return text('notification-message', s.notif_insecure);
+        if (!window.isSecureContext || !('Notification' in window) || !('serviceWorker' in navigator)) return textNotif(s.notif_insecure);
         try {
             messagingModule = await import('firebase/messaging');
             notificationsSupported = await messagingModule.isSupported();
             log('messaging.isSupported', { supported: notificationsSupported });
-            notificationButton.disabled = !notificationsSupported || !activeTicket;
-            if (!notificationsSupported) text('notification-message', s.notif_unsupported);
+            allEnableButtons.forEach(btn => { btn.disabled = !notificationsSupported || !activeTicket; });
+            if (!notificationsSupported) textNotif(s.notif_unsupported);
             if (notificationsSupported && Notification.permission === 'granted' && !optedOut()) await renewPushSubscription();
         } catch (error) {
             report('prepare notifications failed', error);
@@ -182,9 +182,9 @@ if (root) {
             removeForegroundListener ??= messagingModule.onMessage(messaging, payload => {
                 log('foreground FCM message', { kind: payload.data?.kind ?? '', ticketId: payload.data?.ticket_id ?? '' });
                 if (payload.data?.ticket_id && payload.data.ticket_id !== config.initial.id) return;
-                refresh(); text('notification-message', payload.data?.kind === 'near_turn' ? s.notif_near : s.notif_called);
+                refresh(); textNotif(payload.data?.kind === 'near_turn' ? s.notif_near : s.notif_called);
             });
-            text('notification-message', s.notif_enabled);
+            textNotif(s.notif_enabled);
         } catch (error) {
             report('push subscription failed', error);
             throw error;
@@ -197,7 +197,7 @@ if (root) {
             await post(root.dataset.unsubscribeUrl, { token: currentPushToken });
             currentPushToken = null;
             removeForegroundListener?.(); removeForegroundListener = undefined;
-            text('notification-message', s.notif_stopped);
+            textNotif(s.notif_stopped);
         } finally { notificationBusy = false; updateNotificationButtons(); }
     };
     const syncNotifications = async () => {
@@ -205,9 +205,9 @@ if (root) {
         try {
             if (Notification.permission !== 'granted' && currentPushToken) await stopNotifications();
             else if (!optedOut() && !currentPushToken) await renewPushSubscription();
-        } catch { text('notification-message', s.notif_prepare_failed); }
+        } catch { textNotif(s.notif_prepare_failed); }
     };
-    notificationButton?.addEventListener('click', async event => {
+    allEnableButtons.forEach(btn => btn?.addEventListener('click', async event => {
         const button = event.currentTarget;
         if (!notificationsSupported || !activeTicket) return;
         button.disabled = true;
@@ -216,10 +216,10 @@ if (root) {
             if (permission !== 'granted') throw new Error(s.notif_denied);
             setOptOut(false);
             await renewPushSubscription();
-        } catch (error) { text('notification-message', error.message || s.notif_error); }
+        } catch (error) { textNotif(error.message || s.notif_error); }
         finally { updateNotificationButtons(); }
-    });
-    stopNotificationButton?.addEventListener('click', () => stopNotifications().catch(() => text('notification-message', s.notif_stop_error)));
+    }));
+    allStopButtons.forEach(btn => btn?.addEventListener('click', () => stopNotifications().catch(() => textNotif(s.notif_stop_error))));
     window.addEventListener('unhandledrejection', event => report('unhandled rejection', event.reason));
     window.addEventListener('error', event => report('window error', event.error ?? event.message));
     log('ticket live sync boot', { kind: root.dataset.kind ?? '', ticketId: config.initial?.id ?? '', enabled: config.enabled });

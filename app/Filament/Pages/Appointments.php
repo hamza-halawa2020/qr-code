@@ -36,8 +36,12 @@ class Appointments extends Page
 
     public function mount(): void
     {
-        $branch = app(BranchAccessService::class)->branches(auth()->user())->first();
-        $this->branchId = $branch?->id;
+        $branches = app(BranchAccessService::class)->branches(auth()->user());
+        $saved = session('admin_selected_branch');
+        $this->branchId = ($saved && $branches->contains('id', $saved))
+            ? (int) $saved
+            : $branches->first()?->id;
+        $branch = Branch::find($this->branchId);
         $this->appointmentInterval = (int) ($branch?->appointment_interval_minutes ?: 60);
         $this->appointmentsEnabled = (bool) ($branch?->appointments_enabled ?? true);
         $this->bookingLeadHours = (int) ($branch?->booking_lead_hours ?? 0);

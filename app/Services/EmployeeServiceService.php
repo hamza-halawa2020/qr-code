@@ -29,7 +29,7 @@ class EmployeeServiceService
             $data = Validator::make(['serviceIds' => $serviceIds], [
                 'serviceIds' => 'present|array|max:200',
                 'serviceIds.*' => ['required', 'integer', 'distinct', Rule::exists('branch_services', 'id')->where('branch_id', $branchId)],
-            ], ['serviceIds.*.exists' => 'اختار خدمات من نفس الفرع فقط.'])->validate();
+            ], ['serviceIds.*.exists' => __('queue.err_employee_services_branch')])->validate();
             $employee->services()->sync($data['serviceIds']);
         }, 5);
     }

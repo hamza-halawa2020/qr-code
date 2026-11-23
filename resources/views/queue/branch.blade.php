@@ -4,7 +4,9 @@
         <div>{!! __('queue.branch_heading') !!}</div>
         <p>{{ __('queue.branch_subheading') }}</p>
         @include('queue.partials.weekly-hours', ['branch' => $branch])
+        @if($branch->appointments_enabled)
         <p><a class="button secondary" href="{{ route('appointments.index', $branch) }}">{{ __('queue.appointment_cta') }}</a></p>
+        @endif
         <section class="panel booking-panel">
             <span class="status-dot {{ $branch->acceptsBookings() ? '' : 'off' }}">
                 {{ $branch->acceptsBookings() ? __('queue.accepting_now') : __('queue.booking_closed') }}

@@ -37,7 +37,7 @@ class CounterSessionService
             $counter = Counter::whereKey($counter->id)->lockForUpdate()->firstOrFail();
             abort_unless($user->is_active && $counter->user_id === $user->id && ($user->role === 'admin' || $user->branch_id === $counter->branch_id), 403);
             if ($counter->currentTicket()) {
-                throw ValidationException::withMessages(['queue' => 'أنهِ التذكرة الحالية قبل إنهاء الوردية.']);
+                throw ValidationException::withMessages(['queue' => __('queue.err_shift_has_ticket')]);
             }
             $this->closeForCounter($counter, 'employee_finished');
             if (! $counter->is_paused) {
