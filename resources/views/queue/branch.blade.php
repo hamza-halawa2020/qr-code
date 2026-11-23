@@ -42,6 +42,6 @@
                 <p class="muted">{{ __('queue.closed_hours_note') }}</p>
             @endif
         </section>
-        <p class="muted">{{ __('queue.queue_note') }}</p>
+        <!-- <p class="muted">{{ __('queue.queue_note') }}</p> -->
     </div>
 </x-queue-layout>

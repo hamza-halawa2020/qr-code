@@ -21,5 +21,5 @@
             </div>
         @endforelse
     </section>
-    <a class="quiet-link" href="/admin">{{ __('queue.staff_login') }}</a>
+    <!-- <a class="quiet-link" href="/admin">{{ __('queue.staff_login') }}</a> -->
 </x-queue-layout>

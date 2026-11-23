@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cookie;
 use Symfony\Component\HttpFoundation\Response;
 
 class SetLocale
@@ -14,9 +15,11 @@ class SetLocale
 
     public function handle(Request $request, Closure $next): Response
     {
-        // 1. Query-string ?lang=en sets the preference and persists it via cookie
+        // 1. Query-string ?lang=en sets the preference
         if ($request->has('lang') && in_array($request->query('lang'), self::SUPPORTED, true)) {
             $locale = $request->query('lang');
+            // Queue the cookie so it persists across redirects and Livewire responses
+            Cookie::queue(Cookie::forever(self::COOKIE, $locale, '/', null, false, false, false, 'Lax'));
         } else {
             // 2. Cookie from a previous choice
             $locale = $request->cookie(self::COOKIE);
@@ -27,14 +30,8 @@ class SetLocale
             $locale = self::DEFAULT;
         }
 
-        // Set BEFORE the request is handled so views render in the right language
         app()->setLocale($locale);
 
-        $response = $next($request);
-
-        // Persist the choice in a long-lived cookie
-        return $response->withCookie(
-            cookie()->forever(self::COOKIE, $locale, 0, '/', null, false, false, false, 'Lax')
-        );
+        return $next($request);
     }
 }
