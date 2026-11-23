@@ -189,6 +189,7 @@ return [
     'nav_services'      => 'Services',
     'panel_brand'       => 'Bernasos | Queue Management',
     'saved'             => 'Saved',
+    'login_phone_label' => 'Mobile number',
 
     // ── Global services ────────────────────────────────────────────────────
     'svc_model'          => 'service',
@@ -250,7 +251,7 @@ return [
     'ops_svc_enable'            => 'Enable',
     'ops_add_employee'          => 'Add employee to branch',
     'ops_emp_name'              => 'Employee name',
-    'ops_emp_email'             => 'Email address',
+    'ops_emp_phone'             => 'Mobile number',
     'ops_emp_password'          => 'Password: at least 12 characters',
     'ops_emp_role'              => 'New account role',
     'ops_role_agent'            => 'Reception agent',
@@ -259,7 +260,7 @@ return [
     'ops_add_emp_btn'           => 'Add employee',
     'ops_employees_title'       => 'Branch accounts',
     'ops_col_name'              => 'Name',
-    'ops_col_email'             => 'Email',
+    'ops_col_phone'             => 'Mobile',
     'ops_col_role'              => 'Role',
     'ops_col_status'            => 'Account status',
     'ops_col_services'          => 'Assigned services',

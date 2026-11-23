@@ -2,9 +2,7 @@
 
 namespace App\Filament\Pages;
 
-use App\Models\Setting;
 use App\Services\BranchAccessService;
-use App\Services\BranchBoardService;
 use App\Services\EmployeeServiceService;
 use App\Services\OperationsService;
 use App\Services\ServiceLinkService;
@@ -46,7 +44,7 @@ class Operations extends Page
 
     public string $employeeName = '';
 
-    public string $employeeEmail = '';
+    public string $employeePhone = '';
 
     public string $employeePassword = '';
 
@@ -57,7 +55,7 @@ class Operations extends Page
 
     public string $editEmployeeName = '';
 
-    public string $editEmployeeEmail = '';
+    public string $editEmployeePhone = '';
 
     public string $editEmployeeRole = 'agent';
 
@@ -92,8 +90,6 @@ class Operations extends Page
 
     public string $panelLocale = 'ar';
 
-    public string $pruneTime = '03:00';
-
     #[Locked]
     public ?string $displayUrl = null;
 
@@ -107,7 +103,6 @@ class Operations extends Page
 
     public function mount(): void
     {
-        $this->pruneTime = Setting::get('prune_time', '03:00') ?? '03:00';
         $this->weeklyHours = $this->defaultWeeklyHours();
         $this->selectedBranch = $this->branches()->first()?->id;
         $this->updatedSelectedBranch();
@@ -181,15 +176,6 @@ class Operations extends Page
         $this->done();
     }
 
-    public function savePruneTime(): void
-    {
-        abort_unless(auth()->user()?->role === 'admin', 403);
-        $this->validate(['pruneTime' => ['required', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/']]);
-        Setting::set('prune_time', $this->pruneTime);
-        $this->resetValidation(['pruneTime']);
-        Notification::make()->title(__('queue.ops_prune_time_saved'))->success()->send();
-    }
-
     public function toggleBooking(): void
     {
         $this->service()->toggleBooking(auth()->user(), $this->selectedBranch);
@@ -210,8 +196,8 @@ class Operations extends Page
 
     public function createEmployee(): void
     {
-        $this->guarded(fn () => $this->service()->createEmployee(auth()->user(), $this->selectedBranch, $this->only(['employeeName', 'employeeEmail', 'employeePassword', 'employeeRole'])));
-        $this->reset('employeeName', 'employeeEmail', 'employeePassword');
+        $this->guarded(fn () => $this->service()->createEmployee(auth()->user(), $this->selectedBranch, $this->only(['employeeName', 'employeePhone', 'employeePassword', 'employeeRole'])));
+        $this->reset('employeeName', 'employeePhone', 'employeePassword');
         $this->done();
     }
 
@@ -258,13 +244,13 @@ class Operations extends Page
     public function closeEmployee(): void
     {
         $this->editingEmployeeId = null;
-        $this->reset('editEmployeeName', 'editEmployeeEmail', 'editEmployeeRole', 'editEmployeeBranchId', 'editEmployeeActive', 'editEmployeePassword');
+        $this->reset('editEmployeeName', 'editEmployeePhone', 'editEmployeeRole', 'editEmployeeBranchId', 'editEmployeeActive', 'editEmployeePassword');
     }
 
     public function saveEmployee(): void
     {
         abort_unless($this->editingEmployeeId, 422);
-        $this->guarded(fn () => $this->service()->updateEmployee(auth()->user(), $this->selectedBranch, $this->editingEmployeeId, $this->only(['editEmployeeName', 'editEmployeeEmail', 'editEmployeeRole', 'editEmployeeBranchId', 'editEmployeeActive', 'editEmployeePassword'])));
+        $this->guarded(fn () => $this->service()->updateEmployee(auth()->user(), $this->selectedBranch, $this->editingEmployeeId, $this->only(['editEmployeeName', 'editEmployeePhone', 'editEmployeeRole', 'editEmployeeBranchId', 'editEmployeeActive', 'editEmployeePassword'])));
         $this->closeEmployee();
         $this->done();
     }

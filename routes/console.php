@@ -3,7 +3,6 @@
 use App\Jobs\PublishBranch;
 use App\Models\Branch;
 use App\Models\OutboxMessage;
-use App\Models\Setting;
 use App\Services\CloseBusinessDay;
 use App\Services\CustomerExperienceService;
 use App\Services\QueueRetentionService;
@@ -68,13 +67,4 @@ Schedule::command('queue:near-reminders')->everyMinute()->withoutOverlapping();
 Schedule::command('appointments:expire')->everyTenMinutes()->withoutOverlapping();
 Schedule::command('queue:close-day')->everyFifteenMinutes()->withoutOverlapping();
 
-$pruneTime = '03:00';
-try {
-    $configured = Setting::get('prune_time');
-    if ($configured && preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $configured)) {
-        $pruneTime = $configured;
-    }
-} catch (\Throwable) {
-    $pruneTime = '03:00';
-}
-Schedule::command('queue:prune')->dailyAt($pruneTime)->timezone('Africa/Cairo')->withoutOverlapping();
+// queue:prune is intentionally NOT scheduled — data deletion is disabled.

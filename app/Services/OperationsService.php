@@ -103,15 +103,15 @@ class OperationsService
     public function createEmployee(User $user, ?int $branchId, array $input): void
     {
         $branch = $this->access->authorizedBranch($user, $branchId);
-        $data = Validator::make($input + ['employeeRole' => 'agent'], ['employeeName' => 'required|string|max:120', 'employeeEmail' => 'required|email|max:255|unique:users,email', 'employeePassword' => 'required|string|min:12|max:128', 'employeeRole' => ['required', Rule::in($user->role === 'admin' ? ['agent', 'manager'] : ['agent'])]])->validate();
-        User::create(['name' => $data['employeeName'], 'email' => $data['employeeEmail'], 'password' => $data['employeePassword'], 'role' => $data['employeeRole'], 'branch_id' => $branch->id]);
+        $data = Validator::make($input + ['employeeRole' => 'agent'], ['employeeName' => 'required|string|max:120', 'employeePhone' => 'required|string|max:30|unique:users,phone', 'employeePassword' => 'required|string|min:12|max:128', 'employeeRole' => ['required', Rule::in($user->role === 'admin' ? ['agent', 'manager'] : ['agent'])]])->validate();
+        User::create(['name' => $data['employeeName'], 'phone' => $data['employeePhone'], 'password' => $data['employeePassword'], 'role' => $data['employeeRole'], 'branch_id' => $branch->id]);
     }
 
     public function employeeData(User $user, ?int $branchId, int $employeeId): array
     {
         $employee = $this->employee($user, $branchId, $employeeId);
 
-        return ['editEmployeeName' => $employee->name, 'editEmployeeEmail' => $employee->email, 'editEmployeeRole' => $employee->role, 'editEmployeeBranchId' => $employee->branch_id, 'editEmployeeActive' => $employee->is_active, 'editEmployeePassword' => ''];
+        return ['editEmployeeName' => $employee->name, 'editEmployeePhone' => $employee->phone, 'editEmployeeRole' => $employee->role, 'editEmployeeBranchId' => $employee->branch_id, 'editEmployeeActive' => $employee->is_active, 'editEmployeePassword' => ''];
     }
 
     public function updateEmployee(User $user, ?int $branchId, int $employeeId, array $input): void
@@ -121,7 +121,7 @@ class OperationsService
             $employee = $this->employee($user, $branch->id, $employeeId);
             $data = Validator::make($input, [
                 'editEmployeeName' => 'required|string|max:120',
-                'editEmployeeEmail' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($employee->id)],
+                'editEmployeePhone' => ['required', 'string', 'max:30', Rule::unique('users', 'phone')->ignore($employee->id)],
                 'editEmployeeRole' => ['required', Rule::in($user->role === 'admin' ? ['agent', 'manager', 'admin'] : ['agent'])],
                 'editEmployeeBranchId' => ['required', 'integer', Rule::exists('branches', 'id')],
                 'editEmployeeActive' => 'required|boolean',
@@ -155,7 +155,7 @@ class OperationsService
 
             $values = [
                 'name' => $data['editEmployeeName'],
-                'email' => $data['editEmployeeEmail'],
+                'phone' => $data['editEmployeePhone'],
                 'role' => $data['editEmployeeRole'],
                 'branch_id' => $targetBranchId,
                 'is_active' => $data['editEmployeeActive'],

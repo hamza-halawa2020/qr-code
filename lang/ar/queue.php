@@ -189,6 +189,7 @@ return [
     'nav_services'      => 'الخدمات',
     'panel_brand'       => 'برناسوس | إدارة الانتظار',
     'saved'             => 'تم الحفظ',
+    'login_phone_label' => 'رقم الموبايل',
 
     // ── Global services ────────────────────────────────────────────────────
     'svc_model'          => 'خدمة',
@@ -250,7 +251,7 @@ return [
     'ops_svc_enable'            => 'تفعيل',
     'ops_add_employee'          => 'إضافة موظف للفرع',
     'ops_emp_name'              => 'اسم الموظف',
-    'ops_emp_email'             => 'البريد الإلكتروني',
+    'ops_emp_phone'             => 'رقم الموبايل',
     'ops_emp_password'          => 'كلمة مرور: 12 حرفًا على الأقل',
     'ops_emp_role'              => 'صلاحية الحساب الجديد',
     'ops_role_agent'            => 'موظف استقبال',
@@ -259,7 +260,7 @@ return [
     'ops_add_emp_btn'           => 'إضافة موظف',
     'ops_employees_title'       => 'حسابات الفرع',
     'ops_col_name'              => 'الاسم',
-    'ops_col_email'             => 'البريد',
+    'ops_col_phone'             => 'الموبايل',
     'ops_col_role'              => 'الصلاحية',
     'ops_col_status'            => 'حالة الحساب',
     'ops_col_services'          => 'الخدمات المخصصة',
