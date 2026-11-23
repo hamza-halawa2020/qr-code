@@ -214,7 +214,7 @@ if (root) {
     };
     allEnableButtons.forEach(btn => btn?.addEventListener('click', async event => {
         const button = event.currentTarget;
-        if (!notificationsSupported || !activeTicket) return;
+        if (button.disabled) return;
         button.disabled = true;
         try {
             const permission = await Notification.requestPermission();
