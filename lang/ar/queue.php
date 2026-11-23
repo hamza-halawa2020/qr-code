@@ -410,6 +410,9 @@ return [
     'rep_col_hour'          => 'الساعة',
     'rep_col_count'         => 'عدد الحجوزات',
     'rep_no_hourly'         => 'لا توجد حجوزات في هذا اليوم.',
+    'rep_sessions_title'    => 'وردیات الشبابيك (آخر 20)',
+    'rep_sessions_note'     => 'آخر 20 وردية للتاريخ والفرع المحدد.',
+    'rep_no_sessions'       => 'لا توجد وردیات في هذا اليوم.',
 
     // ── Appointments admin ────────────────────────────────────────────────
     'adm_appt_customer_page'  => 'صفحة حجز المواعيد',
