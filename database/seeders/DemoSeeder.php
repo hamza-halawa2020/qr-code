@@ -25,7 +25,7 @@ class DemoSeeder extends Seeder
         //     throw new \RuntimeException('Demo seeding is only allowed locally.');
         // }
 
-        if (User::where('email', 'admin@example.com')->exists()) {
+        if (User::where('phone', '01000000001')->exists()) {
             $this->command?->warn('Demo already seeded; skipping.');
 
             return;
@@ -542,14 +542,14 @@ class DemoSeeder extends Seeder
         $this->command?->info('Demo seeded successfully!');
         $this->command?->info('Credentials saved to: storage/app/private/demo-access.md');
         $this->command?->table(
-            ['Role', 'Email', 'Password'],
+            ['Role', 'Phone', 'Password'],
             [
-                ['admin',   'admin@example.com',   '12345678'],
-                ['manager', 'manager@example.com', '12345678'],
-                ['agent',   'agent1@example.com',  '12345678'],
-                ['agent',   'agent2@example.com',  '12345678'],
-                ['agent',   'agent3@example.com',  '12345678'],
-                ['agent (inactive)', 'agent4@example.com', '12345678'],
+                ['admin',            '01000000001', '12345678'],
+                ['manager',          '01000000002', '12345678'],
+                ['agent',            '01000000003', '12345678'],
+                ['agent',            '01000000004', '12345678'],
+                ['agent',            '01000000005', '12345678'],
+                ['agent (inactive)', '01000000006', '12345678'],
             ]
         );
     }
