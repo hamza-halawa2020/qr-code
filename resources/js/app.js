@@ -118,10 +118,12 @@ if (root) {
         })().finally(() => { connectInFlight = undefined; });
         return connectInFlight;
     };
+    const notifPromptTop = document.getElementById('notif-prompt-top');
+    const hideTopPrompt = () => { if (notifPromptTop) notifPromptTop.hidden = true; };
     const prepareNotifications = async () => {
         if (!allEnableButtons.length) return;
         allEnableButtons.forEach(btn => { btn.disabled = true; });
-        if (!config.enabled) return textNotif(s.notif_unavailable);
+        if (!config.enabled) { hideTopPrompt(); return textNotif(s.notif_unavailable); }
         const environment = {
             secure: window.isSecureContext,
             notification: 'Notification' in window,
@@ -130,13 +132,13 @@ if (root) {
             vapidLength: (config.vapidKey ?? '').length,
         };
         log('notification environment', environment);
-        if (!window.isSecureContext || !('Notification' in window) || !('serviceWorker' in navigator)) return textNotif(s.notif_insecure);
+        if (!window.isSecureContext || !('Notification' in window) || !('serviceWorker' in navigator)) { hideTopPrompt(); return textNotif(s.notif_insecure); }
         try {
             messagingModule = await import('firebase/messaging');
             notificationsSupported = await messagingModule.isSupported();
             log('messaging.isSupported', { supported: notificationsSupported });
-            allEnableButtons.forEach(btn => { btn.disabled = !notificationsSupported || !activeTicket; });
-            if (!notificationsSupported) textNotif(s.notif_unsupported);
+            if (!notificationsSupported) { hideTopPrompt(); textNotif(s.notif_unsupported); return; }
+            allEnableButtons.forEach(btn => { btn.disabled = !activeTicket; });
             if (notificationsSupported && Notification.permission === 'granted' && !optedOut()) await renewPushSubscription();
         } catch (error) {
             report('prepare notifications failed', error);
@@ -146,6 +148,8 @@ if (root) {
         const enableDisabled = !activeTicket || !notificationsSupported || notificationBusy || !!currentPushToken;
         allEnableButtons.forEach(btn => { btn.disabled = enableDisabled; });
         allStopButtons.forEach(btn => { btn.hidden = !currentPushToken; btn.disabled = notificationBusy; });
+        // Hide the top prompt once notifications are active
+        if (currentPushToken) hideTopPrompt();
     };
     const renewPushSubscription = async () => {
         if (!notificationsSupported || !activeTicket || notificationBusy || optedOut() || Notification.permission !== 'granted') return;
@@ -184,6 +188,7 @@ if (root) {
                 if (payload.data?.ticket_id && payload.data.ticket_id !== config.initial.id) return;
                 refresh(); textNotif(payload.data?.kind === 'near_turn' ? s.notif_near : s.notif_called);
             });
+            hideTopPrompt();
             textNotif(s.notif_enabled);
         } catch (error) {
             report('push subscription failed', error);
