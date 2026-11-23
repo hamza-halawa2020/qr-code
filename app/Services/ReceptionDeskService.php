@@ -75,8 +75,19 @@ class ReceptionDeskService
         }, 5);
     }
 
-    public function manualBooking(User $user, array $details = []): Ticket
+    public function requeueTicket(User $user, string $requestKey, int $ticketId, ?int $newBranchServiceId = null): Ticket
     {
+        return $this->runCommand($user, $requestKey, 'requeue', $ticketId, function () use ($user, $ticketId, $newBranchServiceId) {
+            $counter = $this->counter($user);
+            abort_unless($counter, 403);
+            $ticket = $counter->currentTicket();
+            abort_unless($ticket && $ticket->id === $ticketId, 422);
+
+            return $this->queue->requeue($ticket, $user, $newBranchServiceId ?: null);
+        });
+    }
+
+    public function manualBooking(User $user, array $details = []): Ticket    {
         $counter = $this->counter($user);
         abort_unless($counter, 403);
         $secret = Str::random(64);

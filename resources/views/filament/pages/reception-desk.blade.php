@@ -29,9 +29,21 @@
                         <p class="queue-muted">{{ $counter->branch->automatic_queue ? __('queue.rec_countdown_auto') : __('queue.rec_countdown_manual') }}</p>
                     </div>
                 </div>
+                <div class="queue-row" style="margin-top:16px;padding-top:12px;border-top:1px solid #e5e7eb">
+                    <label>{{ __('queue.rec_requeue_service') }}
+                        <select class="queue-input" wire:model="requeueServiceId">
+                            <option value="">{{ __('queue.rec_requeue_keep_service') }}</option>
+                            @foreach($counter->branch->services()->join('services', 'services.id', '=', 'branch_services.service_id')->where('branch_services.is_active', true)->orderBy('services.name')->select('branch_services.*')->get() as $service)
+                                <option value="{{ $service->id }}">{{ $service->name }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                    <x-filament::button color="warning" wire:click="requeueTicket({{ $current->id }})" wire:loading.attr="disabled">{{ __('queue.rec_requeue') }}</x-filament::button>
+                </div>
             @else
                 <div class="queue-row">
                     <x-filament::button wire:click="act('complete', {{ $current->id }})" wire:loading.attr="disabled">{{ __('queue.rec_complete') }}</x-filament::button>
+                    <x-filament::button color="warning" wire:click="requeueTicket({{ $current->id }})" wire:loading.attr="disabled">{{ __('queue.rec_requeue') }}</x-filament::button>
                 </div>
             @endif
         @else
@@ -44,5 +56,6 @@
         @if($deferred->isNotEmpty())<section class="queue-card"><div class="queue-title">{{ __('queue.rec_deferred_title') }}</div><p class="queue-muted">{{ __('queue.rec_deferred_note') }}</p><div class="queue-row">@foreach($deferred as $item)<x-filament::badge color="warning">{{ __('queue.rec_deferred_badge', ['number' => $item->display_number, 'service' => $item->service_name, 'used' => $item->retry_attempts, 'limit' => $item->retry_limit]) }}</x-filament::badge>@endforeach</div></section>@endif
         <section class="queue-card"><div class="queue-title">{{ __('queue.rec_waiting_title', ['count' => $waiting->count()]) }}</div><div class="queue-row">@forelse($waiting->take(30) as $ticket)<x-filament::badge color="gray">{{ $ticket->display_number }} — {{ $ticket->service_name ?? __('queue.rec_old_ticket') }}</x-filament::badge>@empty<p class="queue-muted">{{ __('queue.rec_no_waiting') }}</p>@endforelse</div></section>
     @endif
+<section class="queue-card"><div class="queue-title">{{ __('queue.rec_profile_title') }}</div><form wire:submit="saveProfile" class="queue-row"><label>{{ __('queue.ops_col_name') }} <input class="queue-input" wire:model="profileName" required maxlength="120"></label><label>{{ __('queue.ops_col_phone') }} <input class="queue-input" type="tel" wire:model="profilePhone" required maxlength="30" dir="ltr"></label><label>{{ __('queue.ops_emp_new_password') }} <input class="queue-input" type="password" wire:model="profilePassword" autocomplete="new-password" minlength="12"></label><x-filament::button type="submit" wire:loading.attr="disabled">{{ __('queue.rec_profile_save') }}</x-filament::button></form>@error('profileName')<p role="alert" style="color:#dc2626">{{ $message }}</p>@enderror@error('profilePhone')<p role="alert" style="color:#dc2626">{{ $message }}</p>@enderror@error('profilePassword')<p role="alert" style="color:#dc2626">{{ $message }}</p>@enderror</section>
 </div>
 </x-filament-panels::page>

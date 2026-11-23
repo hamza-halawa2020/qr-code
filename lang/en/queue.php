@@ -189,6 +189,8 @@ return [
     'nav_services'      => 'Services',
     'panel_brand'       => 'Bernasos | Queue Management',
     'saved'             => 'Saved',
+    'rec_profile_title' => 'My account',
+    'rec_profile_save'  => 'Save changes',
     'login_phone_label' => 'Mobile number',
 
     // ── Global services ────────────────────────────────────────────────────
@@ -341,6 +343,10 @@ return [
     'rec_absent'            => 'No show',
     'rec_complete'          => 'Complete service',
     'rec_call_next'         => 'Call next',
+    'rec_requeue'           => 'Return to queue',
+    'rec_requeue_service'   => 'Change service (optional)',
+    'rec_requeue_keep_service' => '— Keep current service —',
+    'rec_requeued'          => 'Customer returned to queue',
     'rec_no_current'        => 'Ready for next customer',
     'rec_pause'             => 'Take a break',
     'rec_resume'            => 'Resume',

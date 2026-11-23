@@ -10,6 +10,13 @@
             @if($ticket->service_name)
                 <p>{{ __('queue.requested_service', ['name' => $ticket->service_name]) }}</p>
             @endif
+            <section class="panel" id="notif-prompt-top" style="margin-bottom:16px">
+                <div>{{ __('queue.notifications_title') }}</div>
+                <p>{{ __('queue.notifications_body') }}</p>
+                <button type="button" class="button" id="enable-notifications-top">{{ __('queue.enable_notifications') }}</button>
+                <button type="button" class="text-button" id="disable-notifications-top" hidden>{{ __('queue.disable_notifications') }}</button>
+                <p id="notification-message-top" class="muted" role="status"></p>
+            </section>
             <div id="ticket-heading">{{ $snapshot['heading'] }}</div>
             <p id="ticket-description">{{ $snapshot['description'] }}</p>
             <p id="retry-note">{{ $snapshot['retry_note'] }}</p>

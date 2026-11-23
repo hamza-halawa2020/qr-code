@@ -13,11 +13,18 @@ if (root) {
     let notificationBusy = false, currentPushToken = null, removeForegroundListener;
     const notificationButton = document.getElementById('enable-notifications');
     const stopNotificationButton = document.getElementById('disable-notifications');
+    // Top-of-page duplicates — kept in sync with the sidebar buttons
+    const notificationButtonTop = document.getElementById('enable-notifications-top');
+    const stopNotificationButtonTop = document.getElementById('disable-notifications-top');
+    const allEnableButtons = [notificationButton, notificationButtonTop].filter(Boolean);
+    const allStopButtons = [stopNotificationButton, stopNotificationButtonTop].filter(Boolean);
+    const allNotifMessages = ['notification-message', 'notification-message-top'];
     const preferenceKey = `queue-notifications-optout:${config.initial.id}`;
     let notificationPreference = null;
     const optedOut = () => { if (notificationPreference !== null) return notificationPreference; try { return localStorage.getItem(preferenceKey) === '1'; } catch { return false; } };
     const setOptOut = value => { notificationPreference = value; try { value ? localStorage.setItem(preferenceKey, '1') : localStorage.removeItem(preferenceKey); } catch {} };
     const text = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value ?? ''; };
+    const textNotif = value => allNotifMessages.forEach(id => text(id, value));
     const connection = value => text('connection-status', value);
     const log = (...args) => console.log('[queue]', ...args);
     const logError = (label, error) => {
@@ -29,7 +36,7 @@ if (root) {
         });
         const isPushServiceError = String(error?.code) === '20' || /push service error/i.test(rawMessage);
         const message = isPushServiceError && s.notif_push_service ? s.notif_push_service : rawMessage;
-        if (message) text('notification-message', message);
+        if (message) textNotif(message);
         return rawMessage;
     };
     const report = (label, error) => {
@@ -136,8 +143,9 @@ if (root) {
         }
     };
     const updateNotificationButtons = () => {
-        if (notificationButton) notificationButton.disabled = !activeTicket || !notificationsSupported || notificationBusy || !!currentPushToken;
-        if (stopNotificationButton) { stopNotificationButton.hidden = !currentPushToken; stopNotificationButton.disabled = notificationBusy; }
+        const enableDisabled = !activeTicket || !notificationsSupported || notificationBusy || !!currentPushToken;
+        allEnableButtons.forEach(btn => { btn.disabled = enableDisabled; });
+        allStopButtons.forEach(btn => { btn.hidden = !currentPushToken; btn.disabled = notificationBusy; });
     };
     const renewPushSubscription = async () => {
         if (!notificationsSupported || !activeTicket || notificationBusy || optedOut() || Notification.permission !== 'granted') return;

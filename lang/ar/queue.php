@@ -189,6 +189,8 @@ return [
     'nav_services'      => 'الخدمات',
     'panel_brand'       => 'برناسوس | إدارة الانتظار',
     'saved'             => 'تم الحفظ',
+    'rec_profile_title' => 'حسابي',
+    'rec_profile_save'  => 'حفظ التغييرات',
     'login_phone_label' => 'رقم الموبايل',
 
     // ── Global services ────────────────────────────────────────────────────
@@ -341,6 +343,10 @@ return [
     'rec_absent'            => 'لم يحضر',
     'rec_complete'          => 'إنهاء الخدمة',
     'rec_call_next'         => 'استدعاء التالي',
+    'rec_requeue'           => 'إرجاع للطابور',
+    'rec_requeue_service'   => 'تغيير الخدمة (اختياري)',
+    'rec_requeue_keep_service' => '— إبقاء الخدمة الحالية —',
+    'rec_requeued'          => 'تم إرجاع العميل للطابور',
     'rec_no_current'        => 'جاهز لاستقبال العميل التالي',
     'rec_pause'             => 'استراحة',
     'rec_resume'            => 'استئناف العمل',

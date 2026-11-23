@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/admin/login');
+        $middleware->encryptCookies(except: ['locale']);
         $middleware->web(append: [QueuePrivacy::class, SetLocale::class]);
         $middleware->alias([
             'display.locale' => SetDisplayLocale::class,

@@ -40,6 +40,7 @@ class TicketEvent extends Model
             'deferred'     => 'تأجيل لإعادة النداء',
             'retry_ready'  => 'جاهز لإعادة النداء',
             'retry_called' => 'نداء فرصة إضافية',
+            'requeued'     => 'إرجاع للطابور',
             default        => $this->type,
         };
     }

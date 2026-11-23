@@ -2,12 +2,16 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\User;
 use App\Services\ReceptionDeskService;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\Dehydrated;
 
 class ReceptionDesk extends Page
 {
@@ -28,9 +32,20 @@ class ReceptionDesk extends Page
 
     public string $manualPhone = '';
 
+    public ?int $requeueServiceId = null;
+
+    // Profile edit
+    public string $profileName = '';
+    public string $profilePhone = '';
+    #[Dehydrated(false)]
+    public string $profilePassword = '';
+
     public function mount(): void
     {
         $this->operationKey = (string) Str::uuid();
+        $user = auth()->user();
+        $this->profileName  = $user->name;
+        $this->profilePhone = $user->phone ?? '';
     }
 
     public function act(string $action, ?int $expectedTicketId = null): void
@@ -58,6 +73,42 @@ class ReceptionDesk extends Page
         } catch (ValidationException $exception) {
             Notification::make()->title(collect($exception->errors())->flatten()->first())->warning()->send();
         }
+    }
+
+    public function requeueTicket(int $ticketId): void
+    {
+        try {
+            app(ReceptionDeskService::class)->requeueTicket(auth()->user(), $this->operationKey, $ticketId, $this->requeueServiceId ?: null);
+            $this->operationKey = (string) Str::uuid();
+            $this->requeueServiceId = null;
+            Notification::make()->title(__('queue.rec_requeued'))->success()->send();
+        } catch (ValidationException $exception) {
+            Notification::make()->title(collect($exception->errors())->flatten()->first())->warning()->send();
+        }
+    }
+
+    public function saveProfile(): void
+    {
+        $user = auth()->user();
+        $data = $this->validate([
+            'profileName'     => 'required|string|max:120',
+            'profilePhone'    => ['required', 'string', 'max:30', Rule::unique('users', 'phone')->ignore($user->id)],
+            'profilePassword' => 'nullable|string|min:12|max:128',
+        ]);
+
+        $values = [
+            'name'  => $data['profileName'],
+            'phone' => $data['profilePhone'],
+        ];
+        if (filled($data['profilePassword'])) {
+            $values['password'] = Hash::make($data['profilePassword']);
+        }
+
+        User::whereKey($user->id)->update($values);
+
+        $this->profilePassword = '';
+        $this->resetValidation();
+        Notification::make()->title(__('queue.saved'))->success()->send();
     }
 
     protected function getViewData(): array
