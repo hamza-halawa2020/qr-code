@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Jobs\PublishBranch;
 use App\Models\Branch;
 use App\Models\Counter;
-use App\Models\CounterSession;
 use App\Models\OutboxMessage;
 use App\Models\Service;
 use App\Models\User;
@@ -33,7 +32,6 @@ class OperationsService
             'counters' => $branch?->counters()->with('user')->orderBy('number')->get() ?? collect(), 
             'employees' => User::with('services')->where('branch_id', $branch?->id ?? 0)->get(), 
             'assignableEmployees' => User::where('branch_id', $branch?->id ?? 0)->where('is_active', true)->whereNotIn('id', $assignedIds)->orderBy('name')->get(), 
-            'counterSessions' => CounterSession::with(['counter', 'user'])->where('branch_id', $branch?->id ?? 0)->orderByDesc('id')->limit(20)->get()
         ];
     }
 

@@ -410,6 +410,9 @@ return [
     'rep_col_hour'          => 'Hour',
     'rep_col_count'         => 'Bookings',
     'rep_no_hourly'         => 'No bookings on this day.',
+    'rep_sessions_title'    => 'Counter sessions (last 20)',
+    'rep_sessions_note'     => 'Shows the most recent 20 sessions for the selected date and branch.',
+    'rep_no_sessions'       => 'No sessions on this day.',
 
     // ── Appointments admin ────────────────────────────────────────────────
     'adm_appt_customer_page'  => 'Customer appointments page',

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\TicketStatus;
+use App\Models\CounterSession;
 use App\Models\Ticket;
 use App\Models\TicketEvent;
 use App\Models\User;
@@ -40,7 +41,15 @@ class QueueReportService
         $ticketRows = (clone $query)->when($status, fn ($query) => $query->where('status', $status))
             ->orderByDesc('id')->paginate(25, ['*'], 'page', $page);
 
-        return ['serviceStats' => $serviceStats, 'ratings' => $ratings, 'ratingCount' => $ratings->count(), 'ratingAverage' => $ratings->isEmpty() ? null : round($ratings->avg('rating'), 1), 'branches' => $branches, 'tickets' => $tickets, 'ticketRows' => $ticketRows, 'employeeStats' => $employeeStats, 'hourlyStats' => $hourlyStats, 'peakHour' => $hourlyStats->sortDesc()->keys()->first(), 'counts' => $tickets->countBy(fn ($ticket) => $ticket->status->value), 'waitMinutes' => round(($wait->avg() ?? 0) / 60, 1), 'serviceMinutes' => round(($service->avg() ?? 0) / 60, 1)];
+        $counterSessions = CounterSession::with(['counter', 'user'])
+            ->whereIn('branch_id', $branches->pluck('id'))
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->whereDate('started_at', $date)
+            ->orderByDesc('id')
+            ->limit(20)
+            ->get();
+
+        return ['serviceStats' => $serviceStats, 'ratings' => $ratings, 'ratingCount' => $ratings->count(), 'ratingAverage' => $ratings->isEmpty() ? null : round($ratings->avg('rating'), 1), 'branches' => $branches, 'tickets' => $tickets, 'ticketRows' => $ticketRows, 'employeeStats' => $employeeStats, 'hourlyStats' => $hourlyStats, 'peakHour' => $hourlyStats->sortDesc()->keys()->first(), 'counts' => $tickets->countBy(fn ($ticket) => $ticket->status->value), 'waitMinutes' => round(($wait->avg() ?? 0) / 60, 1), 'serviceMinutes' => round(($service->avg() ?? 0) / 60, 1), 'counterSessions' => $counterSessions];
     }
 
     public function history(User $user, int $ticketId): array
