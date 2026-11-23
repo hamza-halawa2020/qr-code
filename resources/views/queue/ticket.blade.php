@@ -11,7 +11,7 @@
                 <p>{{ __('queue.requested_service', ['name' => $ticket->service_name]) }}</p>
             @endif
             <section class="panel" id="notif-prompt-top" style="margin-bottom:16px">
-                <div>{{ __('queue.notifications_title') }}</div>
+                <!-- <div>{{ __('queue.notifications_title') }}</div> -->
                 <!-- <p>{{ __('queue.notifications_body') }}</p> -->
 
                 <section class="panel">
