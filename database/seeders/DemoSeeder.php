@@ -71,9 +71,9 @@ class DemoSeeder extends Seeder
         // the link rows (and their IDs) is what tickets and agents reference.
         $globalGeneral    = Service::firstOrCreate(['name' => 'خدمة عامة']);
         $globalAccounts   = Service::firstOrCreate(['name' => 'فتح حسابات']);
-        $globalLoans      = Service::firstOrCreate(['name' => 'القروض والتمويل']);
+        $globalLoans      = Service::firstOrCreate(['name' => 'الخزنة']);
         $globalComplaints = Service::firstOrCreate(['name' => 'الشكاوى والاستفسارات']);
-        $globalCards      = Service::firstOrCreate(['name' => 'بطاقات ائتمانية']);
+        $globalCards      = Service::firstOrCreate(['name' => 'خدمات VIP']);
 
         $link = fn (Service $service, bool $active) => BranchService::create([
             'branch_id' => $branch->id,
@@ -309,7 +309,7 @@ class DemoSeeder extends Seeder
         $t2 = $bookTicket($svcAccounts->id, 'فتح حسابات', '01112345678', 'منى سعيد');
         $this->serveTicket($t2, $counter2, $agent2, $branch, $today, -70, -64, -50, $version);
 
-        $t3 = $bookTicket($svcLoans->id, 'القروض والتمويل', '01223456789', 'عمر إبراهيم');
+        $t3 = $bookTicket($svcLoans->id, 'الخزنة', '01223456789', 'عمر إبراهيم');
         $this->serveTicket($t3, $counter3, $agent3, $branch, $today, -60, -55, -40, $version);
 
         $t4 = $bookTicket($svcComplaints->id, 'الشكاوى والاستفسارات', '01234567890', 'نور أحمد');
@@ -345,7 +345,7 @@ class DemoSeeder extends Seeder
         ]);
 
         // ── 4. CANCELLED ticket ──────────────────────────────────────────
-        $t8 = $bookTicket($svcLoans->id, 'القروض والتمويل', '01233333333', 'ليلى حسين');
+        $t8 = $bookTicket($svcLoans->id, 'الخزنة', '01233333333', 'ليلى حسين');
         $t8->update([
             'status'     => TicketStatus::Cancelled,
             'finished_at'=> now()->subMinutes(20),
@@ -392,7 +392,7 @@ class DemoSeeder extends Seeder
         ]);
 
         // ── 7. CURRENTLY SERVING ticket (at counter2) ───────────────────
-        $t11 = $bookTicket($svcLoans->id, 'القروض والتمويل', '01066666666', 'هند يوسف');
+        $t11 = $bookTicket($svcLoans->id, 'الخزنة', '01066666666', 'هند يوسف');
         $calledAt11 = now()->subMinutes(8);
         $t11->update([
             'status'          => TicketStatus::Serving,
@@ -430,7 +430,7 @@ class DemoSeeder extends Seeder
             [$svcGeneral->id,    'خدمة عامة',           '01088888881', 'آدم سامي',       null],
             [$svcAccounts->id,   'فتح حسابات',          '01088888882', 'سلمى إسماعيل',   null],
             [$svcComplaints->id, 'الشكاوى والاستفسارات','01088888883', 'باسم عبد العزيز', null],
-            [$svcLoans->id,      'القروض والتمويل',     '01088888884', 'نادية كريم',      null],
+            [$svcLoans->id,      'الخزنة',     '01088888884', 'نادية كريم',      null],
             [$svcGeneral->id,    'خدمة عامة',           '01088888885', 'إبراهيم حاتم',    null],
             [$svcGeneral->id,    'خدمة عامة',           '01088888886', 'شيرين طاهر',      null],
             [$svcAccounts->id,   'فتح حسابات',          '01088888887', 'زياد وليد',        null],
@@ -616,11 +616,11 @@ class DemoSeeder extends Seeder
             [$svcGeneral->id,  'خدمة عامة',       '01001000001', 'حمزة رضا'],
             [$svcGeneral->id,  'خدمة عامة',       '01001000002', 'جمال سرور'],
             [$svcAccounts->id, 'فتح حسابات',      '01001000003', 'سوسن الطيب'],
-            [$svcLoans->id,    'القروض والتمويل', '01001000004', 'بشار نورالدين'],
+            [$svcLoans->id,    'الخزنة', '01001000004', 'بشار نورالدين'],
             [$svcGeneral->id,  'خدمة عامة',       '01001000005', 'عبير قاسم'],
             [$svcAccounts->id, 'فتح حسابات',      '01001000006', 'فادي منير'],
             [$svcGeneral->id,  'خدمة عامة',       '01001000007', 'ماجدة سالم'],
-            [$svcLoans->id,    'القروض والتمويل', '01001000008', 'نزار علاء'],
+            [$svcLoans->id,    'الخزنة', '01001000008', 'نزار علاء'],
         ];
 
         // Yesterday's daily sequence
