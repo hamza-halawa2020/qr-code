@@ -22,9 +22,9 @@
                     <p id="notification-message" class="muted" role="status"></p>
                 </section>
 
-
+<!-- 
                 <button type="button" class="button" id="enable-notifications-top">{{ __('queue.enable_notifications') }}</button>
-                <button type="button" class="text-button" id="disable-notifications-top" hidden>{{ __('queue.disable_notifications') }}</button>
+                <button type="button" class="text-button" id="disable-notifications-top" hidden>{{ __('queue.disable_notifications') }}</button> -->
                 <p id="notification-message-top" class="muted" role="status"></p>
             </section>
             <div id="ticket-heading">{{ $snapshot['heading'] }}</div>
