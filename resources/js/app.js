@@ -217,6 +217,9 @@ if (root) {
         if (button.disabled) return;
         button.disabled = true;
         try {
+            // If prepareNotifications hasn't finished yet, run it now and wait
+            if (!messagingModule) await prepareNotifications();
+            if (!notificationsSupported || !activeTicket) { updateNotificationButtons(); return; }
             const permission = await Notification.requestPermission();
             if (permission !== 'granted') throw new Error(s.notif_denied);
             setOptOut(false);
