@@ -12,7 +12,17 @@
             @endif
             <section class="panel" id="notif-prompt-top" style="margin-bottom:16px">
                 <div>{{ __('queue.notifications_title') }}</div>
-                <p>{{ __('queue.notifications_body') }}</p>
+                <!-- <p>{{ __('queue.notifications_body') }}</p> -->
+
+                <section class="panel">
+                    <div>{{ __('queue.notifications_title') }}</div>
+                    <p>{{ __('queue.notifications_body') }}</p>
+                    <button type="button" class="button secondary" id="enable-notifications">{{ __('queue.enable_notifications') }}</button>
+                    <button type="button" class="text-button" id="disable-notifications" hidden>{{ __('queue.disable_notifications') }}</button>
+                    <p id="notification-message" class="muted" role="status"></p>
+                </section>
+
+
                 <button type="button" class="button" id="enable-notifications-top">{{ __('queue.enable_notifications') }}</button>
                 <button type="button" class="text-button" id="disable-notifications-top" hidden>{{ __('queue.disable_notifications') }}</button>
                 <p id="notification-message-top" class="muted" role="status"></p>
@@ -48,13 +58,7 @@
                 <p id="ahead-description">{{ $snapshot['ahead_label'] }}</p>
                 <small>{{ __('queue.ahead_note') }}</small>
             </section>
-            <section class="panel">
-                <div>{{ __('queue.notifications_title') }}</div>
-                <p>{{ __('queue.notifications_body') }}</p>
-                <button type="button" class="button secondary" id="enable-notifications">{{ __('queue.enable_notifications') }}</button>
-                <button type="button" class="text-button" id="disable-notifications" hidden>{{ __('queue.disable_notifications') }}</button>
-                <p id="notification-message" class="muted" role="status"></p>
-            </section>
+            
             <p id="connection-status" class="connection" role="status">{{ __('queue.js.connecting') }}</p>
             <small id="last-updated"></small>
             <form method="post" action="{{ route('ticket.cancel', $secret) }}" id="cancel-ticket"
