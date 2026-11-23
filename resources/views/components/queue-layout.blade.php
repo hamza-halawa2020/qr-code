@@ -18,7 +18,7 @@
             {{ __('queue.brand_name') }}
             <small>{{ __('queue.brand_tagline') }}</small>
         </a>
-        <span class="header-label">{{ __('queue.header_label') }}</span>
+        <!-- <span class="header-label">{{ __('queue.header_label') }}</span> -->
         <a class="lang-switch"
            href="{{ request()->fullUrlWithQuery(['lang' => __('queue.lang_switch_code')]) }}"
            aria-label="{{ __('queue.lang_switch') }}">{{ __('queue.lang_switch') }}</a>
