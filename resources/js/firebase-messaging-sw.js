@@ -2,13 +2,19 @@ import { initializeApp } from 'firebase/app';
 import { getMessaging } from 'firebase/messaging/sw';
 
 // Registered before Firebase's handler so clicking a notification focuses the
-// existing ticket tab. The secret ticket URL is never sent to FCM.
+// existing ticket tab or opens the saved ticket URL directly.
 self.addEventListener('notificationclick', event => {
     event.notification.close();
     event.stopImmediatePropagation();
+    const ticketUrl = event.notification.data?.FCM_MSG?.data?.ticket_url
+        || event.notification.data?.ticket_url
+        || null;
     event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
-        const ticket = clients.find(client => new URL(client.url).pathname.startsWith('/t/'));
-        return ticket ? ticket.focus() : self.clients.openWindow('/');
+        // Try to focus an already-open ticket tab first.
+        const existing = clients.find(client => new URL(client.url).pathname.startsWith('/t/'));
+        if (existing) return existing.focus();
+        // Open the saved ticket URL, or fall back to home.
+        return self.clients.openWindow(ticketUrl || '/');
     }));
 });
 // Diagnostic: lets us confirm a background push actually reached the worker

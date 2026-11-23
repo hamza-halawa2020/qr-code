@@ -82,7 +82,7 @@ class PublishBranch implements ShouldQueue
                     'subscriptions' => $subscriptions->count(),
                 ]);
                 foreach ($subscriptions as $subscription) {
-                    if (! $firebase->notify($subscription->token, (string) $message->id, $snapshot->ticket($ticket) + ['notification_kind' => $near ? 'near_turn' : 'called'])) {
+                    if (! $firebase->notify($subscription->token, (string) $message->id, $snapshot->ticket($ticket) + ['notification_kind' => $near ? 'near_turn' : 'called', 'ticket_url' => $subscription->ticket_url ?? ''])) {
                         DB::table('push_subscriptions')->where('id', $subscription->id)->delete();
                         Log::warning('[firebase] stale subscription removed', [
                             'branch_id' => $branch->id,

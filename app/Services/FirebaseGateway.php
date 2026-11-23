@@ -46,7 +46,7 @@ class FirebaseGateway
             ['message' => [
                 'token' => $token,
                 'notification' => ['title' => ($data['notification_kind'] ?? '') === 'near_turn' ? __('queue.notif_near_turn') : __('queue.notif_called_now'), 'body' => ($data['notification_kind'] ?? '') === 'near_turn' ? __('queue.notif_near_body', ['number' => $data['number']]) : __('queue.notif_called_body', ['number' => $data['number'], 'counter' => $data['counter']])],
-                'data' => ['event_id' => $eventId, 'ticket_id' => $data['id'], 'kind' => $data['notification_kind'] ?? 'called'],
+                'data' => ['event_id' => $eventId, 'ticket_id' => $data['id'], 'kind' => $data['notification_kind'] ?? 'called', 'ticket_url' => $data['ticket_url'] ?? ''],
                 'webpush' => ['headers' => ['TTL' => '60'], 'notification' => ['tag' => 'queue-'.$eventId]],
             ]],
         );

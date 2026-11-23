@@ -39,13 +39,15 @@ class TicketNotificationService
         abort_unless($ticket->status->isActive(), 422);
         $data = Validator::make(['token' => $token], ['token' => ['required', 'string', 'max:4096']])->validate();
 
-        DB::transaction(function () use ($ticket, $data) {
+        $ticketUrl = route('ticket.show', $secret);
+
+        DB::transaction(function () use ($ticket, $data, $ticketUrl) {
             $branch = Branch::whereKey($ticket->branch_id)->lockForUpdate()->firstOrFail();
             $ticket = $ticket->fresh();
             abort_unless($ticket->status->isActive(), 422);
             DB::table('push_subscriptions')->updateOrInsert(
                 ['token_hash' => hash('sha256', $data['token'])],
-                ['ticket_id' => $ticket->id, 'token' => $data['token'], 'created_at' => now(), 'updated_at' => now()],
+                ['ticket_id' => $ticket->id, 'token' => $data['token'], 'ticket_url' => $ticketUrl, 'created_at' => now(), 'updated_at' => now()],
             );
             Log::info('[ticket][service] push subscription stored', [
                 'ticket_id' => $ticket->id,
