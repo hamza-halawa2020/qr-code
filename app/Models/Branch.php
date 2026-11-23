@@ -22,7 +22,7 @@ class Branch extends Model
 
     protected function casts(): array
     {
-        return ['is_open' => 'boolean', 'automatic_queue' => 'boolean'];
+        return ['is_open' => 'boolean', 'automatic_queue' => 'boolean', 'appointments_enabled' => 'boolean'];
     }
 
     public function counters(): HasMany

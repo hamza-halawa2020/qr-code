@@ -25,6 +25,10 @@ class Appointments extends Page
 
     public int $appointmentInterval = 60;
 
+    public bool $appointmentsEnabled = true;
+
+    public int $bookingLeadHours = 0;
+
     public static function canAccess(): bool
     {
         return app(BranchAccessService::class)->canManage(auth()->user());
@@ -35,17 +39,37 @@ class Appointments extends Page
         $branch = app(BranchAccessService::class)->branches(auth()->user())->first();
         $this->branchId = $branch?->id;
         $this->appointmentInterval = (int) ($branch?->appointment_interval_minutes ?: 60);
+        $this->appointmentsEnabled = (bool) ($branch?->appointments_enabled ?? true);
+        $this->bookingLeadHours = (int) ($branch?->booking_lead_hours ?? 0);
     }
 
     public function updatedBranchId(): void
     {
-        $this->appointmentInterval = (int) (Branch::find($this->branchId)?->appointment_interval_minutes ?: 60);
+        $branch = Branch::find($this->branchId);
+        $this->appointmentInterval = (int) ($branch?->appointment_interval_minutes ?: 60);
+        $this->appointmentsEnabled = (bool) ($branch?->appointments_enabled ?? true);
+        $this->bookingLeadHours = (int) ($branch?->booking_lead_hours ?? 0);
     }
 
     public function saveInterval(): void
     {
         try {
             app(AppointmentService::class)->saveInterval(auth()->user(), $this->branchId, $this->appointmentInterval);
+        } catch (ValidationException $exception) {
+            Notification::make()->title(collect($exception->errors())->flatten()->first())->danger()->send();
+
+            throw $exception;
+        }
+        Notification::make()->title(__('queue.saved'))->success()->send();
+    }
+
+    public function saveConfig(): void
+    {
+        try {
+            app(AppointmentService::class)->saveConfig(auth()->user(), $this->branchId, [
+                'appointmentsEnabled' => $this->appointmentsEnabled,
+                'bookingLeadHours'    => $this->bookingLeadHours,
+            ]);
         } catch (ValidationException $exception) {
             Notification::make()->title(collect($exception->errors())->flatten()->first())->danger()->send();
 

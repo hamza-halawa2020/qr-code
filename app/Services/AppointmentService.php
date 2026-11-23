@@ -30,7 +30,10 @@ class AppointmentService
             'branch' => $branch,
             'services' => $branch->services()->where('is_active', true)->get(),
             'date' => $date,
-            'appointmentSlots' => $this->slotView($branch, $this->generateTimes($branch, $date)),
+            'appointmentsEnabled' => (bool) $branch->appointments_enabled,
+            'appointmentSlots' => $branch->appointments_enabled
+                ? $this->slotView($branch, $this->generateTimes($branch, $date))
+                : collect(),
         ];
     }
 
@@ -54,6 +57,8 @@ class AppointmentService
 
         DB::transaction(function () use ($branch, $secret, $data) {
             Branch::whereKey($branch->id)->lockForUpdate()->firstOrFail();
+
+            $this->require((bool) $branch->appointments_enabled, 'الحجز الإلكتروني غير متاح لهذا الفرع حاليًا.');
 
             $times = $this->generateTimes($branch, $data['date']);
             $requested = Carbon::createFromFormat('Y-m-d H:i', $data['date'].' '.$data['time'], $branch->timezone ?: 'Africa/Cairo')->second(0)->utc();
@@ -129,6 +134,20 @@ class AppointmentService
         Branch::findOrFail($branchId)->update(['appointment_interval_minutes' => $data['interval']]);
     }
 
+    /** Enable / disable appointments and set the lead-time for a branch. */
+    public function saveConfig(User $actor, ?int $branchId, array $input): void
+    {
+        abort_unless($actor->is_active && $actor->role === 'admin', 403);
+        $data = Validator::make($input, [
+            'appointmentsEnabled' => 'required|boolean',
+            'bookingLeadHours'    => 'required|integer|min:0|max:168',
+        ])->validate();
+        Branch::findOrFail($branchId)->update([
+            'appointments_enabled' => $data['appointmentsEnabled'],
+            'booking_lead_hours'   => $data['bookingLeadHours'],
+        ]);
+    }
+
     public function adminData(User $user, ?int $branchId): array
     {
         $branches = app(BranchAccessService::class)->branches($user);
@@ -173,10 +192,12 @@ class AppointmentService
         $opens = Carbon::createFromFormat('Y-m-d H:i', $date.' '.$hours['opens_at'], $timezone)->second(0);
         $closes = Carbon::createFromFormat('Y-m-d H:i', $date.' '.$hours['closes_at'], $timezone)->second(0);
         $now = now($timezone);
+        $leadHours = max(0, (int) ($branch->booking_lead_hours ?? 0));
+        $earliest = $now->copy()->addHours($leadHours);
         $times = [];
 
         for ($cursor = $opens->copy(); $cursor->copy()->addMinutes($interval)->lessThanOrEqualTo($closes); $cursor->addMinutes($interval)) {
-            if ($cursor->greaterThan($now)) {
+            if ($cursor->greaterThan($earliest)) {
                 $times[] = $cursor->copy()->utc();
             }
         }
