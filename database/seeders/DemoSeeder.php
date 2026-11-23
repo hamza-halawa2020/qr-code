@@ -86,29 +86,27 @@ class DemoSeeder extends Seeder
         $svcComplaints = $link($globalComplaints, true);
         $svcCards      = $link($globalCards, false); // inactive in this branch
 
-        // ----------------------------------------------------------------
-        // Users  (admin + manager + 4 agents)
-        // ----------------------------------------------------------------
-        $makeUser = function (string $name, string $email, string $role) use ($branch, &$lines): User {
+        // ── Users  (admin + manager + 4 agents) ──────────────────────────
+        $makeUser = function (string $name, string $phone, string $role) use ($branch, &$lines): User {
             $user = User::create([
                 'name'      => $name,
-                'email'     => $email,
+                'phone'     => $phone,
                 'password'  => Hash::make('12345678'),
                 'role'      => $role,
                 'branch_id' => $branch->id,
                 'is_active' => true,
             ]);
-            $lines[] = "- {$email} / `12345678`  ({$role})";
+            $lines[] = "- {$phone} / `12345678`  ({$role})";
 
             return $user;
         };
 
-        $admin   = $makeUser('مدير النظام',           'admin@example.com',   'admin');
-        $manager = $makeUser('مدير الفرع',            'manager@example.com', 'manager');
-        $agent1  = $makeUser('أحمد محمد',             'agent1@example.com',  'agent');
-        $agent2  = $makeUser('سارة خالد',             'agent2@example.com',  'agent');
-        $agent3  = $makeUser('محمود عبد الله',        'agent3@example.com',  'agent');
-        $agent4  = $makeUser('فاطمة حسن',             'agent4@example.com',  'agent'); // inactive employee
+        $admin   = $makeUser('مدير النظام',    '01000000001', 'admin');
+        $manager = $makeUser('مدير الفرع',     '01000000002', 'manager');
+        $agent1  = $makeUser('أحمد محمد',      '01000000003', 'agent');
+        $agent2  = $makeUser('سارة خالد',      '01000000004', 'agent');
+        $agent3  = $makeUser('محمود عبد الله', '01000000005', 'agent');
+        $agent4  = $makeUser('فاطمة حسن',      '01000000006', 'agent'); // inactive employee
         $agent4->update(['is_active' => false]);
 
         // ----------------------------------------------------------------
