@@ -29,23 +29,22 @@
                         <p class="queue-muted">{{ $counter->branch->automatic_queue ? __('queue.rec_countdown_auto') : __('queue.rec_countdown_manual') }}</p>
                     </div>
                 </div>
-                <div class="queue-row" style="margin-top:16px;padding-top:12px;border-top:1px solid #e5e7eb">
-                    <label>{{ __('queue.rec_requeue_service') }}
-                        <select class="queue-input" wire:model="requeueServiceId">
-                            <option value="">{{ __('queue.rec_requeue_keep_service') }}</option>
-                            @foreach($counter->branch->services()->join('services', 'services.id', '=', 'branch_services.service_id')->where('branch_services.is_active', true)->orderBy('services.name')->select('branch_services.*')->get() as $service)
-                                <option value="{{ $service->id }}">{{ $service->name }}</option>
-                            @endforeach
-                        </select>
-                    </label>
-                    <x-filament::button color="warning" wire:click="requeueTicket({{ $current->id }})" wire:loading.attr="disabled">{{ __('queue.rec_requeue') }}</x-filament::button>
-                </div>
             @else
                 <div class="queue-row">
                     <x-filament::button wire:click="act('complete', {{ $current->id }})" wire:loading.attr="disabled">{{ __('queue.rec_complete') }}</x-filament::button>
-                    <x-filament::button color="warning" wire:click="requeueTicket({{ $current->id }})" wire:loading.attr="disabled">{{ __('queue.rec_requeue') }}</x-filament::button>
                 </div>
             @endif
+            <div class="queue-row" style="margin-top:16px;padding-top:12px;border-top:1px solid #e5e7eb">
+                <label>{{ __('queue.rec_requeue_service') }}
+                    <select class="queue-input" wire:model.live="requeueServiceId" onchange="this.blur()">
+                        <option value="">{{ __('queue.rec_requeue_keep_service') }}</option>
+                        @foreach($counter->branch->services()->join('services', 'services.id', '=', 'branch_services.service_id')->where('branch_services.is_active', true)->orderBy('services.name')->select('branch_services.*')->get() as $service)
+                            <option value="{{ $service->id }}">{{ $service->name }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <x-filament::button color="warning" wire:click="requeueTicket({{ $current->id }})" wire:loading.attr="disabled">{{ __('queue.rec_requeue') }}</x-filament::button>
+            </div>
         @else
             <div class="queue-number">—</div><p class="queue-muted">{{ __('queue.rec_no_current') }}</p>
             <x-filament::button wire:click="act('next')" wire:loading.attr="disabled" :disabled="$counter->is_paused">{{ __('queue.rec_call_next') }}</x-filament::button>
