@@ -16,7 +16,7 @@ class CounterSessionService
         return DB::transaction(function () use ($counter, $user) {
             $branch = Branch::whereKey($counter->branch_id)->lockForUpdate()->firstOrFail();
             $counter = Counter::whereKey($counter->id)->lockForUpdate()->firstOrFail();
-            abort_unless($user->is_active && $counter->user_id === $user->id && ($user->role === 'admin' || $user->branch_id === $branch->id), 403);
+            abort_unless($user->is_active && $counter->user_id === $user->id, 403);
             $date = now($branch->timezone)->toDateString();
             $session = $this->active($counter);
             if ($session && $session->user_id === $user->id && ($session->business_date->toDateString() === $date || $counter->currentTicket())) {
@@ -35,7 +35,7 @@ class CounterSessionService
         DB::transaction(function () use ($counter, $user) {
             Branch::whereKey($counter->branch_id)->lockForUpdate()->firstOrFail();
             $counter = Counter::whereKey($counter->id)->lockForUpdate()->firstOrFail();
-            abort_unless($user->is_active && $counter->user_id === $user->id && ($user->role === 'admin' || $user->branch_id === $counter->branch_id), 403);
+            abort_unless($user->is_active && $counter->user_id === $user->id, 403);
             if ($counter->currentTicket()) {
                 throw ValidationException::withMessages(['queue' => __('queue.err_shift_has_ticket')]);
             }

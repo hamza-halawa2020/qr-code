@@ -17,11 +17,12 @@ class CustomerQueueService
 
     public function branches(): Collection
     {
-        return Branch::with('schedules')->orderBy('name')->get();
+        return Branch::where('is_active', true)->with('schedules')->orderBy('name')->get();
     }
 
     public function branchData(Branch $branch, Session $session): array
     {
+        abort_unless($branch->is_active, 404);
         $secret = $session->get('ticket.'.$branch->id);
         $active = $secret ? Ticket::where('token_hash', hash('sha256', $secret))->first() : null;
 
@@ -38,6 +39,7 @@ class CustomerQueueService
 
     public function book(Branch $branch, Session $session, array $input = []): string
     {
+        abort_unless($branch->is_active, 404);
         ['secret' => $secret, 'active' => $existing] = $this->branchData($branch, $session);
         if ($existing?->status->isActive()) {
             return $secret;

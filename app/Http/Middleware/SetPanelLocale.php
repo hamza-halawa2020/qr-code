@@ -2,7 +2,7 @@
 
 namespace App\Http\Middleware;
 
-use App\Services\BranchAccessService;
+use App\Models\Branch;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -20,9 +20,11 @@ class SetPanelLocale
         $user = auth()->user();
 
         if ($user) {
-            $branches = app(BranchAccessService::class)->branches($user);
-            // Use the first accessible branch's panel locale
-            $locale = $branches->first()?->panel_locale ?? 'ar';
+            $branchId = $request->query('branch_id')
+                ?? $request->session()->get('staff.branch_id')
+                ?? $user->branch_id;
+            $branch = $branchId ? Branch::where('is_active', true)->find($branchId) : null;
+            $locale = $branch?->panel_locale ?? 'ar';
 
             if (in_array($locale, self::SUPPORTED, true)) {
                 app()->setLocale($locale);

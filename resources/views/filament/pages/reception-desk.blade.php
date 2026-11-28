@@ -1,5 +1,6 @@
 <x-filament-panels::page>
 <div class="queue-grid">
+    <section class="queue-card"><div class="queue-title">{{ __('queue.rec_choose_branch') }}</div><div class="queue-row"><select class="queue-input" wire:model.live="branchId" aria-label="{{ __('queue.rec_choose_branch') }}">@foreach($branches as $branchOption)<option value="{{ $branchOption->id }}">{{ $branchOption->name }}</option>@endforeach</select><select class="queue-input" wire:model.live="counterId" aria-label="{{ __('queue.rec_choose_counter') }}"><option value="">{{ __('queue.rec_choose_counter') }}</option>@foreach($counters as $counterOption)<option value="{{ $counterOption->id }}">{{ $counterOption->name }}</option>@endforeach</select><x-filament::button wire:click="selectCounter" :disabled="!$counterId">{{ __('queue.rec_enter_counter') }}</x-filament::button></div>@error('counter')<p role="alert">{{ $message }}</p>@enderror</section>
     @if($counter && $shift)
         <section class="queue-card"><div class="queue-row"><p>{{ __('queue.rec_active_shift', ['time' => $shift->started_at->timezone($counter->branch->timezone)->format('Y-m-d H:i')]) }}</p><x-filament::button color="gray" wire:click="act('end_shift')" wire:loading.attr="disabled" :disabled="(bool) $current">{{ __('queue.rec_end_shift') }}</x-filament::button></div></section>
     @endif

@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Models\User;
+use App\Models\Branch;
 use App\Services\ReceptionDeskService;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -32,6 +33,12 @@ class ReceptionDesk extends Page
 
     public string $manualPhone = '';
 
+    public ?int $branchId = null;
+
+    public ?int $counterId = null;
+
+    protected $queryString = ['branchId' => ['as' => 'branch_id', 'except' => '']];
+
     public ?int $requeueServiceId = null;
 
     // Profile edit
@@ -46,6 +53,22 @@ class ReceptionDesk extends Page
         $user = auth()->user();
         $this->profileName  = $user->name;
         $this->profilePhone = $user->phone ?? '';
+        $this->branchId = (int) request()->query('branch_id', session('staff.branch_id', $user->branch_id));
+        if (! $this->branchId) $this->branchId = Branch::where('is_active', true)->orderBy('name')->value('id');
+        if ($this->branchId) app(ReceptionDeskService::class)->selectBranch($user, $this->branchId);
+    }
+
+    public function updatedBranchId(): void
+    {
+        abort_unless($this->branchId, 422);
+        app(ReceptionDeskService::class)->selectBranch(auth()->user(), $this->branchId);
+        $this->counterId = null;
+    }
+
+    public function selectCounter(): void
+    {
+        $this->validate(['branchId' => 'required|integer', 'counterId' => 'required|integer']);
+        app(ReceptionDeskService::class)->selectCounter(auth()->user(), $this->branchId, $this->counterId);
     }
 
     public function act(string $action, ?int $expectedTicketId = null): void

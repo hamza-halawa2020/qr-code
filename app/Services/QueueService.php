@@ -200,7 +200,7 @@ class QueueService
     private function authorize(Counter $counter, User $user): void
     {
         abort_unless($user->is_active, 403);
-        abort_unless($counter->user_id === $user->id && ($user->role === 'admin' || $user->branch_id === $counter->branch_id), 403);
+        abort_unless($counter->user_id === $user->id, 403);
     }
 
     private function require(bool $condition, string $message): void

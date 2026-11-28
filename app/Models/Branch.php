@@ -22,7 +22,7 @@ class Branch extends Model
 
     protected function casts(): array
     {
-        return ['is_open' => 'boolean', 'automatic_queue' => 'boolean', 'appointments_enabled' => 'boolean'];
+        return ['is_open' => 'boolean', 'is_active' => 'boolean', 'automatic_queue' => 'boolean', 'appointments_enabled' => 'boolean'];
     }
 
     public function counters(): HasMany
@@ -44,6 +44,8 @@ class Branch extends Model
     {
         return $this->hasMany(BranchSchedule::class);
     }
+
+    public function appointmentSlots(): HasMany { return $this->hasMany(AppointmentSlot::class); }
 
     /** Always returns 7 rows (0=Sunday … 6=Saturday), filling gaps from the legacy columns. */
     public function weeklySchedule(): Collection

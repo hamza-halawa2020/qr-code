@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\Counter;
 use App\Models\Ticket;
 use App\Models\User;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -58,7 +59,7 @@ class ReceptionDeskService
             Branch::whereKey($counter->branch_id)->lockForUpdate()->firstOrFail();
             $currentUser = User::findOrFail($user->id);
             abort_unless($currentUser->is_active && in_array($currentUser->role, ['admin', 'manager', 'agent'], true)
-                && ($currentUser->role === 'admin' || $currentUser->branch_id === $counter->branch_id), 403);
+                && $counter->user_id === $currentUser->id, 403);
             $receipt = DB::table('reception_commands')->where('user_id', $user->id)->where('request_key', $requestKey)->first();
             if ($receipt) {
                 abort_unless($receipt->counter_id === $counter->id && $receipt->action === $action && $receipt->expected_ticket_id === $expectedTicketId, 409);
@@ -98,8 +99,16 @@ class ReceptionDeskService
     public function viewData(User $user): array
     {
         $counter = $this->counter($user);
+        $branches = Branch::where('is_active', true)->orderBy('name')->get();
+        $branchId = (int) session('staff.branch_id', request()->query('branch_id', $user->branch_id));
+        if (! $branches->contains('id', $branchId)) {
+            $branchId = $branches->first()?->id;
+        }
+        session(['staff.branch_id' => $branchId]);
+        $counters = $branchId ? Counter::where('branch_id', $branchId)->where(fn ($query) => $query->whereNull('user_id')->orWhere('user_id', $user->id))->orderBy('number')->get() : collect();
 
         return [
+            'branches' => $branches, 'counters' => $counters, 'selectedBranchId' => $branchId,
             'savedServices' => $counter ? $user->services()->where('branch_id', $counter->branch_id)->get() : collect(),
             'shift' => $counter ? app(CounterSessionService::class)->active($counter) : null,
             'counter' => $counter, 'current' => $counter?->currentTicket(),
@@ -108,10 +117,39 @@ class ReceptionDeskService
         ];
     }
 
+    public function selectBranch(User $user, int $branchId): void
+    {
+        abort_unless($user->is_active && Branch::where('is_active', true)->whereKey($branchId)->exists(), 403);
+        if ((int) session('staff.branch_id') !== $branchId) session()->forget('staff.counter_id');
+        session(['staff.branch_id' => $branchId]);
+    }
+
+    public function selectCounter(User $user, int $branchId, int $counterId): void
+    {
+        abort_unless($user->is_active && Branch::where('is_active', true)->whereKey($branchId)->exists(), 403);
+        DB::transaction(function () use ($user, $branchId, $counterId) {
+            $target = Counter::where('branch_id', $branchId)->lockForUpdate()->findOrFail($counterId);
+            abort_if($target->user_id && $target->user_id !== $user->id, 403);
+            if ($target->currentTicket() && $target->user_id !== $user->id) {
+                throw ValidationException::withMessages(['counter' => __('queue.rec_counter_busy')]);
+            }
+            $previous = Counter::where('user_id', $user->id)->lockForUpdate()->get();
+            foreach ($previous as $counter) {
+                if ($counter->id === $target->id) continue;
+                if ($counter->currentTicket()) throw ValidationException::withMessages(['counter' => __('queue.rec_finish_current_first')]);
+                app(CounterSessionService::class)->closeForCounter($counter, 'assignment_changed');
+                $counter->update(['user_id' => null]);
+            }
+            $target->update(['user_id' => $user->id]);
+        }, 5);
+        session(['staff.branch_id' => $branchId, 'staff.counter_id' => $counterId]);
+    }
+
     private function counter(User $user): ?Counter
     {
         abort_unless($user->is_active && in_array($user->role, ['admin', 'manager', 'agent'], true), 403);
+        if (! session()->has('staff.counter_id')) return null;
 
-        return Counter::where('user_id', $user->id)->when($user->role !== 'admin', fn ($query) => $query->where('branch_id', $user->branch_id))->first();
+        return Counter::where('user_id', $user->id)->whereKey(session('staff.counter_id'))->first();
     }
 }

@@ -82,10 +82,6 @@ class Operations extends Page
 
     public int $editCounterNumber = 1;
 
-    public ?int $employeeId = null;
-
-    public ?int $assignmentEmployeeId = null;
-
     public int $noShowSeconds = 60;
 
     public bool|int $automaticQueue = 0;
@@ -143,8 +139,6 @@ class Operations extends Page
             $this->boardUrl = null;
         }
         $this->displayUrl = null;
-        $this->employeeId = null;
-        $this->assignmentEmployeeId = null;
         $this->closeEmployee();
         $this->closeCounter();
         $this->closeEmployeeServices();
@@ -188,6 +182,21 @@ class Operations extends Page
     public function toggleBooking(): void
     {
         $this->service()->toggleBooking(auth()->user(), $this->selectedBranch);
+        $this->done();
+    }
+
+    public function toggleBranchActive(): void
+    {
+        $this->service()->toggleBranchActive(auth()->user(), $this->selectedBranch);
+        $this->updatedSelectedBranch();
+        $this->done();
+    }
+
+    public function deleteBranch(): void
+    {
+        $this->guarded(fn () => $this->service()->deleteBranch(auth()->user(), $this->selectedBranch));
+        $this->selectedBranch = $this->branches()->first()?->id;
+        $this->updatedSelectedBranch();
         $this->done();
     }
 
@@ -239,8 +248,8 @@ class Operations extends Page
 
     public function createCounter(): void
     {
-        $this->displayUrl = $this->guarded(fn () => $this->service()->createCounter(auth()->user(), $this->selectedBranch, $this->only(['counterName', 'counterNumber', 'employeeId'])));
-        $this->reset('counterName', 'employeeId');
+        $this->displayUrl = $this->guarded(fn () => $this->service()->createCounter(auth()->user(), $this->selectedBranch, $this->only(['counterName', 'counterNumber'])));
+        $this->reset('counterName');
         $this->done();
     }
 
@@ -293,14 +302,6 @@ class Operations extends Page
         abort_unless($this->editingCounterId, 422);
         $this->guarded(fn () => $this->service()->updateCounter(auth()->user(), $this->selectedBranch, $this->editingCounterId, $this->only(['editCounterName', 'editCounterNumber'])));
         $this->closeCounter();
-        $this->done();
-    }
-
-    public function assignEmployee(int $counterId): void
-    {
-        $this->guarded(fn () => $this->service()->assignEmployee(auth()->user(), $this->selectedBranch, $counterId, $this->assignmentEmployeeId));
-
-        $this->assignmentEmployeeId = null;
         $this->done();
     }
 
