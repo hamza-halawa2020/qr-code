@@ -131,7 +131,6 @@ class QueueService
 
     /**
      * Return a called or serving ticket back to the waiting queue.
-     * Service change is only permitted when the ticket is in 'called' status.
      */
     public function requeue(Ticket $ticket, User $user, ?int $newBranchServiceId = null): Ticket
     {
@@ -144,10 +143,6 @@ class QueueService
                 in_array($from, [TicketStatus::Called, TicketStatus::Serving], true),
                 __('queue.err_requeue_status')
             );
-
-            if ($newBranchServiceId !== null && $from !== TicketStatus::Called) {
-                throw ValidationException::withMessages(['queue' => __('queue.err_requeue_service_serving')]);
-            }
 
             if ($newBranchServiceId !== null) {
                 // Validate the new service belongs to this branch and is active.
